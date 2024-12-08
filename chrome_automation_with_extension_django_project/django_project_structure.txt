@@ -1,0 +1,47 @@
+chrome_automation_with_extension_django_project/  # Main project directory
+├── manage.py
+├── chrome_automation_with_extension_django_project/  # Project configuration
+│   ├── __init__.py
+│   ├── asgi.py
+│   ├── settings.py
+│   ├── urls.py
+│   └── wsgi.py
+└── app_chrome_automation_with_extension_django/  # Main app
+    ├── __init__.py
+    ├── commands/
+    │   ├── __init__.py
+    │   ├── base.py
+    │   ├── storage.py
+    │   ├── navigation.py
+    │   ├── dom.py
+    │   └── registry.py
+    ├── websocket/
+    │   ├── __init__.py
+    │   ├── consumer.py
+    │   └── handlers.py
+    ├── utils/
+    │   ├── __init__.py
+    │   ├── logger.py
+    │   └── validators.py
+    ├── services/
+    │   ├── __init__.py
+    │   └── command_service.py
+    ├── templates/
+    │   ├── dashboard.html
+    │   └── websocket_test.html
+    ├── routing.py
+    ├── urls.py
+    └── views.py
+
+Key files and their purposes:
+- commands/: Command definitions and registry
+- websocket/: WebSocket consumer and handlers
+- utils/: Utility functions and logging
+- services/: Business logic and command execution
+- templates/: HTML templates for web interface
+
+Dependencies:
+- asgi.py uses routing.py for WebSocket routing
+- views.py uses services/command_service.py
+- websocket/consumer.py uses commands/registry.py
+- urls.py maps to views.py functions

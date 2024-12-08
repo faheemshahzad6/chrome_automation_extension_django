@@ -1,0 +1,45 @@
+{
+  "manifest_version": 3,
+  "name": "Chrome Automation Extension",
+  "version": "1.0",
+  "description": "Chrome extension for automation with Django backend",
+  "permissions": [
+    "activeTab",
+    "storage",
+    "scripting",
+    "tabs"
+  ],
+  "host_permissions": [
+    "http://localhost:1234/*",
+    "ws://localhost:1234/*"
+  ],
+  "background": {
+    "service_worker": "background/main.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": [
+        "content/logger.js",
+        "content/storage-commands.js",
+        "content/basic-commands.js",
+        "content/handler.js",
+        "content/main.js"
+      ],
+      "run_at": "document_start"
+    }
+  ],
+  "action": {
+    "default_popup": "popup/popup.html"
+  },
+  "web_accessible_resources": [
+    {
+      "resources": ["content/*.js"],
+      "matches": ["<all_urls>"]
+    }
+  ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'"
+  }
+}

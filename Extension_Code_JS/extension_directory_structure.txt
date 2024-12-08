@@ -1,0 +1,28 @@
+extension/
+├── manifest.json
+├── popup/
+│   ├── popup.html
+│   ├── popup.css
+│   └── popup.js
+├── background/
+│   ├── main.js
+│   ├── websocket.js
+│   └── tab-manager.js
+└── content/
+    ├── logger.js
+    ├── storage-commands.js
+    ├── basic-commands.js
+    ├── handler.js
+    └── main.js
+
+Key files and their purposes:
+- manifest.json: Extension configuration and permissions
+- popup/: User interface for enabling/disabling extension
+- background/: Background service workers and WebSocket handling
+- content/: Scripts that interact with web pages
+
+File dependencies:
+- manifest.json references all content scripts and popup
+- background/main.js imports websocket.js and tab-manager.js
+- content/main.js imports other content modules
+- popup/popup.html includes popup.css and popup.js

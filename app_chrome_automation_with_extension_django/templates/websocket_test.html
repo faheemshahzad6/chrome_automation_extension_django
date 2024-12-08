@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>WebSocket Connection Test</title>
+    <style>
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .panel {
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 10px;
+        }
+        .disconnected {
+            background-color: #ffebee;
+            color: #c62828;
+        }
+        .connected {
+            background-color: #e8f5e9;
+            color: #2e7d32;
+        }
+        #messageLog {
+            height: 300px;
+            overflow-y: auto;
+            background: #f5f5f5;
+            padding: 10px;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="panel">
+            <h2>WebSocket Connection</h2>
+            <div id="connectionStatus" class="status disconnected">
+                Disconnected
+            </div>
+            <button onclick="connect()">Connect</button>
+            <button onclick="disconnect()">Disconnect</button>
+        </div>
+
+        <div class="panel">
+            <h2>Command Execution</h2>
+            <button onclick="executeCommand()">Execute Command</button>
+
+            <div>
+                <h3>Quick Commands:</h3>
+                <button onclick="sendCommand('getTitle')">Get Page Title</button>
+                <button onclick="sendCommand('getUrl')">Get Current URL</button>
+                <button onclick="sendCommand('getAllStorage')">Get All Storage</button>
+            </div>
+        </div>
+
+        <div class="panel">
+            <h2>Message Log</h2>
+            <div id="messageLog"></div>
+            <button onclick="clearLog()">Clear Log</button>
+        </div>
+    </div>
+
+    <script>
+        let ws = null;
+
+        function connect() {
+            ws = new WebSocket('ws://' + window.location.host + '/ws/app_chrome_automation_with_extension_django/');
+
+            ws.onopen = function() {
+                updateStatus(true);
+                logMessage('Connected to WebSocket');
+            };
+
+            ws.onclose = function() {
+                updateStatus(false);
+                logMessage('Disconnected from WebSocket');
+            };
+
+            ws.onmessage = function(e) {
+                logMessage('Received: ' + e.data);
+            };
+
+            ws.onerror = function(e) {
+                logMessage('Error: ' + e.data);
+            };
+        }
+
+        function disconnect() {
+            if (ws) {
+                ws.close();
+                ws = null;
+            }
+        }
+
+        function updateStatus(connected) {
+            const status = document.getElementById('connectionStatus');
+            status.className = 'status ' + (connected ? 'connected' : 'disconnected');
+            status.textContent = connected ? 'Connected' : 'Disconnected';
+        }
+
+        function sendCommand(command) {
+            if (ws) {
+                const message = {
+                    type: 'execute_command',
+                    command: command
+                };
+                ws.send(JSON.stringify(message));
+                logMessage('Sent command: ' + command);
+            } else {
+                logMessage('Error: Not connected');
+            }
+        }
+
+        function executeCommand() {
+            sendCommand('getAllStorage');
+        }
+
+        function logMessage(message) {
+            const log = document.getElementById('messageLog');
+            const time = new Date().toLocaleTimeString();
+            log.innerHTML += `<div>[${time}] ${message}</div>`;
+            log.scrollTop = log.scrollHeight;
+        }
+
+        function clearLog() {
+            document.getElementById('messageLog').innerHTML = '';
+        }
+    </script>
+</body>
+</html>

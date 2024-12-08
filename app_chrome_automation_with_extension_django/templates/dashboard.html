@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Browser Automation Dashboard</title>
+    <style>
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .panel {
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        .log {
+            background: #f5f5f5;
+            padding: 10px;
+            border-radius: 4px;
+            height: 300px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Browser Automation Dashboard</h1>
+
+        <div class="panel">
+            <h2>Network Requests</h2>
+            <div id="networkLog" class="log"></div>
+        </div>
+
+        <div class="panel">
+            <h2>Execute Command</h2>
+            <button onclick="executeCommand()">Execute</button>
+        </div>
+
+        <div class="panel">
+            <h2>Automation Log</h2>
+            <div id="automationLog" class="log"></div>
+        </div>
+    </div>
+
+    <script>
+        function executeCommand() {
+            // Example command execution
+            fetch('/api/execute/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    command: 'get_all_storage'
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log('Success:', data);
+                document.getElementById('automationLog').innerHTML +=
+                    `<div>${JSON.stringify(data)}</div>`;
+            })
+            .catch((error) => {
+                console.error('Error:', error);
+            });
+        }
+    </script>
+</body>
+</html>
