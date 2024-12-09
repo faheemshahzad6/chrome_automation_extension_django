@@ -299,7 +299,7 @@ class GetAllStorageCommand(DOMCommand):
 class GetCookiesCommand(DOMCommand):
     def __init__(self):
         super().__init__(
-            name="get_cookies",
+            name="getCookies",
             description="Get all cookies from the current page",
             script_name="getCookies"
         )

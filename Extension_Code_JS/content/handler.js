@@ -10,30 +10,33 @@ window.AutomationHandler = class AutomationHandler {
     }
 
     registerCommands(commandsObject) {
-        try {
-            // Validate input
-            if (!commandsObject || typeof commandsObject !== 'object') {
-                throw new Error('Invalid commands object provided');
-            }
-
-            // Log all command names being registered
-            window.automationLogger.info('Registering commands with names:', Object.keys(commandsObject));
-
-            // Register each command
-            Object.entries(commandsObject).forEach(([name, fn]) => {
-                if (typeof fn !== 'function') {
-                    window.automationLogger.error(`Invalid command type for ${name}:`, typeof fn);
-                    return;
-                }
-                this.commands[name] = this.wrapCommandFunction(name, fn);
-            });
-
-            window.automationLogger.info('Registered commands:', Object.keys(this.commands));
-        } catch (error) {
-            window.automationLogger.error('Error registering commands:', error);
-            throw error;
+    try {
+        if (!commandsObject || typeof commandsObject !== 'object') {
+            throw new Error('Invalid commands object provided');
         }
+
+        // Log registration
+        window.automationLogger.info('Registering commands:', Object.keys(commandsObject));
+
+        // Register commands with case variations
+        Object.entries(commandsObject).forEach(([name, fn]) => {
+            if (typeof fn !== 'function') {
+                window.automationLogger.error(`Invalid command type for ${name}:`, typeof fn);
+                return;
+            }
+            // Register original name
+            this.commands[name] = this.wrapCommandFunction(name, fn);
+
+            // Register lowercase version
+            this.commands[name.toLowerCase()] = this.wrapCommandFunction(name, fn);
+        });
+
+        window.automationLogger.success('Commands registered:', Object.keys(this.commands));
+    } catch (error) {
+        window.automationLogger.error('Error registering commands:', error);
+        throw error;
     }
+}
 
     wrapCommandFunction(name, fn) {
         return async (...args) => {
@@ -252,7 +255,12 @@ window.AutomationHandler = class AutomationHandler {
 
             // Keep original command mapping intact
             'find_element_by_xpath': 'find_element_by_xpath',
-            'find_elements_by_xpath': 'find_elements_by_xpath'
+            'find_elements_by_xpath': 'find_elements_by_xpath',
+
+            'get_cookies': 'getCookies',
+            'getcookies': 'getCookies',
+            'get_all_storage': 'getAllStorage',
+            'getallstorage': 'getAllStorage'
         };
 
         // Convert to lowercase for matching

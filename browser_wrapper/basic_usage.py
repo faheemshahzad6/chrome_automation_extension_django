@@ -11,11 +11,16 @@ try:
 
     # Try to find and interact with the search box
     try:
-        s = browser.get_all_storage()
-        print(s)
+        # s = browser.get_all_storage()
+        # print(s)
 
-        c = browser.get_cookies()
-        print(c)
+        # Get all storage
+        storage = browser.get_all_storage()
+        print("All Storage:", storage)
+
+        # Get just cookies
+        cookies = browser.get_cookies()
+        print("Cookies:", cookies)
 
         # search_box = browser.find_element_by_xpath('//input[@name="search"]')
         # a = search_box.text
