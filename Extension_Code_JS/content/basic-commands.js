@@ -1,5 +1,32 @@
 window.basicCommands = {
 
+    // Navigation Commands
+    navigate: async (params) => {
+        try {
+            window.automationLogger.info('Executing navigate command', params);
+            if (!params || !params.url) {
+                throw new Error('URL is required for navigation');
+            }
+
+            // Send response before navigation
+            chrome.runtime.sendMessage({
+                type: 'SCRIPT_RESULT',
+                status: 'success',
+                result: true
+            });
+
+            // Perform navigation after a small delay
+            setTimeout(() => {
+                window.location.href = params.url;
+            }, 100);
+
+            return true;
+        } catch (error) {
+            window.automationLogger.error('Error in navigate', error);
+            throw error;
+        }
+    },
+
     back: () => {
         try {
             window.automationLogger.info('Executing back command');

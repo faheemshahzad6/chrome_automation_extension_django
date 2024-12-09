@@ -125,51 +125,48 @@ window.AutomationHandler = class AutomationHandler {
 }
 
     async handleAction(action) {
-        window.automationLogger.info('Handling action', action);
+    window.automationLogger.info('Handling action', action);
+    try {
+        if (action.type !== 'EXECUTE_SCRIPT') {
+            throw new Error(`Unknown action type: ${action.type}`);
+        }
+
+        const { command, params } = this.parseCommand(action.script);
+        window.automationLogger.info('Available commands:', Object.keys(this.commands));
+
+        if (!this.commands[command]) {
+            throw new Error(`Unknown command: ${command}`);
+        }
+
+        // Track the request
+        const requestId = action.command_id || Date.now().toString();
+        this.activeRequests.set(requestId, {
+            command,
+            params,
+            startTime: Date.now()
+        });
+
         try {
-            if (action.type !== 'EXECUTE_SCRIPT') {
-                throw new Error(`Unknown action type: ${action.type}`);
-            }
-
-            const { command, params } = this.parseCommand(action.script);
-
-            // Log available commands for debugging
-            window.automationLogger.info('Available commands:', Object.keys(this.commands));
-
-            if (!this.commands[command]) {
-                throw new Error(`Unknown command: ${command}`);
-            }
-
-            // Track the request
-            const requestId = action.command_id || Date.now().toString();
-            this.activeRequests.set(requestId, {
-                command,
-                params,
-                startTime: Date.now()
-            });
-
-            try {
-                // Handle navigation commands specially
-                if (['navigate', 'back', 'forward', 'refresh'].includes(command)) {
-                    const result = await this.handleNavigationCommand(command, params);
-                    this.activeRequests.delete(requestId);
-                    return result;
-                }
-
-                // Execute regular command
+            // Special handling for navigation commands
+            if (command === 'navigate') {
                 const result = await this.commands[command](params);
                 this.activeRequests.delete(requestId);
-                return this.formatResult(result);
-            } catch (error) {
-                this.activeRequests.delete(requestId);
-                throw error;
+                return result;
             }
 
+            // Execute regular command
+            const result = await this.commands[command](params);
+            this.activeRequests.delete(requestId);
+            return this.formatResult(result);
         } catch (error) {
-            window.automationLogger.error('Action handling error:', error);
+            this.activeRequests.delete(requestId);
             throw error;
         }
+    } catch (error) {
+        window.automationLogger.error('Action handling error:', error);
+        throw error;
     }
+}
 
     async handleNavigationCommand(command, params) {
         return new Promise((resolve, reject) => {
@@ -214,15 +211,14 @@ window.AutomationHandler = class AutomationHandler {
 
         let params = {};
         if (parts.length > 1) {
-            try {
-                // Try parsing as JSON
-                params = JSON.parse(parts[1]);
-            } catch {
-                // For navigation commands, wrap url in object
-                if (command === 'navigate') {
-                    params = { url: parts[1] };
-                } else {
-                    // For other commands, handle parameters
+            if (command === 'navigate') {
+                params = { url: parts[1].trim() };
+            } else {
+                try {
+                    // Try parsing as JSON
+                    params = JSON.parse(parts[1]);
+                } catch {
+                    // For other commands, keep existing behavior
                     const paramParts = parts.slice(1);
                     if (paramParts.length === 1) {
                         params = paramParts[0];

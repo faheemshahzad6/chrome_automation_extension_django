@@ -85,14 +85,24 @@ async handleWebSocketMessage(data) {
         if (data.type === 'automation_command') {
             console.log('[Background] Executing automation command:', data.command);
 
-            // Format command if needed
-            const command = {
-                type: 'EXECUTE_SCRIPT',
-                script: data.command.script || data.command,
-                command_id: data.command.command_id
-            };
+            // Special handling for navigation commands
+            if (data.command.script?.startsWith('navigate|')) {
+                const url = data.command.script.split('|')[1];
+                const tab = await chrome.tabs.update({ url: url });
 
-            await this.tabManager.executeCommand(command);
+                // Send success response
+                this.wsManager.sendMessage({
+                    type: 'SCRIPT_RESULT',
+                    status: 'success',
+                    result: true,
+                    command_id: data.command.command_id
+                });
+
+                return;
+            }
+
+            // Handle other commands
+            await this.tabManager.executeCommand(data.command);
         }
     } catch (error) {
         console.error('[Background] Error handling WebSocket message:', error);
