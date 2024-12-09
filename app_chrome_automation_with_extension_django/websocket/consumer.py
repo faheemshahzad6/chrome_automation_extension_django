@@ -180,6 +180,7 @@ class AutomationConsumer(AsyncWebsocketConsumer):
                 })
                 self.pending_commands.pop(command_id, None)
 
+    # In consumer.py, update the handle_script_error method:
     async def handle_script_error(self, data: Dict[str, Any]):
         """Handle script execution error"""
         error = data.get('error')
@@ -191,11 +192,26 @@ class AutomationConsumer(AsyncWebsocketConsumer):
             logger.error(f"Error stack trace: {stack}")
 
         if command_id:
+            # Store error response for the command
             store_command_response(command_id, {
                 'error': error,
-                'stack': stack
+                'stack': stack,
+                'timestamp': datetime.now().isoformat()
             })
+
+            # Remove from pending commands
             self.pending_commands.pop(command_id, None)
+
+            # Notify client about error
+            try:
+                await self.send(text_data=json.dumps({
+                    'type': 'command_error',
+                    'command_id': command_id,
+                    'error': error,
+                    'timestamp': datetime.now().isoformat()
+                }))
+            except Exception as e:
+                logger.error(f"Error sending error notification: {str(e)}")
 
     async def periodic_cleanup(self):
         """Periodically clean up old pending commands"""

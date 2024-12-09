@@ -56,15 +56,31 @@ export class TabManager {
 
         try {
             await this.injectContentScript(this.activeTabId);
-            return this.sendMessageToTab(this.activeTabId, command);
+
+            // Ensure command is properly formatted
+            const formattedCommand = {
+                type: 'EXECUTE_SCRIPT',
+                script: typeof command === 'string' ? command : command.script,
+                command_id: command.command_id
+            };
+
+            return this.sendMessageToTab(this.activeTabId, formattedCommand);
         } catch (error) {
             console.error('Error executing command:', error);
             throw error;
         }
     }
 
+    // In tab-manager.js, update the sendMessageToTab method:
     sendMessageToTab(tabId, command) {
-        return new Promise((resolve, reject) => {
+    return new Promise((resolve, reject) => {
+        try {
+            // Validate command object
+            if (!command || typeof command !== 'object') {
+                reject(new Error('Invalid command format'));
+                return;
+            }
+
             chrome.tabs.sendMessage(
                 tabId,
                 {
@@ -74,13 +90,27 @@ export class TabManager {
                 (response) => {
                     if (chrome.runtime.lastError) {
                         reject(chrome.runtime.lastError);
-                    } else {
-                        resolve(response);
+                        return;
                     }
+
+                    if (!response) {
+                        reject(new Error('No response received from content script'));
+                        return;
+                    }
+
+                    if (response.type === 'SCRIPT_ERROR') {
+                        reject(new Error(response.error));
+                        return;
+                    }
+
+                    resolve(response);
                 }
             );
-        });
-    }
+        } catch (error) {
+            reject(error);
+        }
+    });
+}
 
     getActiveTabId() {
         return this.activeTabId;

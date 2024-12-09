@@ -78,37 +78,49 @@ window.AutomationHandler = class AutomationHandler {
         };
     }
 
-    // In handler.js
+    // In handler.js, update the setupMessageListener method:
     setupMessageListener() {
     chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-        if (!message || !message.type) {
-            return;
+        if (!message || !message.type || !message.action) {
+            return false;  // Return early if message is invalid
         }
 
-        if (message.type === 'EXECUTE_ACTION' && message.action) {
-            // Handle non-navigation commands
-            if (!message.action.script?.startsWith('navigate')) {
-                this.handleAction(message.action)
-                    .then(result => {
-                        sendResponse({
-                            type: 'SCRIPT_RESULT',
-                            status: 'success',
-                            result: result,
-                            command_id: message.action.command_id
-                        });
-                    })
-                    .catch(error => {
-                        sendResponse({
-                            type: 'SCRIPT_ERROR',
-                            status: 'error',
-                            error: error.message,
-                            stack: error.stack,
-                            command_id: message.action.command_id
-                        });
-                    });
-                return true;
+        if (message.type === 'EXECUTE_ACTION') {
+            // Validate action object
+            if (!message.action.type) {
+                sendResponse({
+                    type: 'SCRIPT_ERROR',
+                    status: 'error',
+                    error: 'Invalid action format: missing type',
+                    command_id: message.action?.command_id
+                });
+                return false;
             }
+
+            // Handle command execution
+            this.handleAction(message.action)
+                .then(result => {
+                    sendResponse({
+                        type: 'SCRIPT_RESULT',
+                        status: 'success',
+                        result: result,
+                        command_id: message.action.command_id
+                    });
+                })
+                .catch(error => {
+                    sendResponse({
+                        type: 'SCRIPT_ERROR',
+                        status: 'error',
+                        error: error.message,
+                        stack: error.stack,
+                        command_id: message.action.command_id
+                    });
+                });
+
+            return true;  // Keep message port open for async response
         }
+
+        return false;
     });
 }
 
@@ -183,14 +195,22 @@ window.AutomationHandler = class AutomationHandler {
         });
     }
 
+    // In handler.js, update the parseCommand method:
     parseCommand(script) {
     try {
-        if (typeof script !== 'string') {
-            throw new Error('Invalid command format');
+        if (!script || typeof script !== 'string') {
+            throw new Error('Invalid command format: script must be a string');
         }
 
         const parts = script.split('|');
+        if (parts.length === 0) {
+            throw new Error('Invalid command format: empty command');
+        }
+
         const command = parts[0].trim();
+        if (!command) {
+            throw new Error('Invalid command format: empty command name');
+        }
 
         let params = {};
         if (parts.length > 1) {
@@ -202,7 +222,7 @@ window.AutomationHandler = class AutomationHandler {
                 if (command === 'navigate') {
                     params = { url: parts[1] };
                 } else {
-                    // For other commands, keep existing behavior
+                    // For other commands, handle parameters
                     const paramParts = parts.slice(1);
                     if (paramParts.length === 1) {
                         params = paramParts[0];

@@ -74,55 +74,37 @@ class BackgroundManager {
     }
 
 async handleWebSocketMessage(data) {
-        if (!this.isEnabled) return;
+    if (!this.isEnabled) return;
 
-        try {
-            if (data.type === 'automation_command' && data.command.script.startsWith('navigate')) {
-                // Handle navigation specially
-                const url = data.command.script.split('|')[1];
-                const commandId = data.command.command_id;
-
-                // Create promise for navigation completion
-                const navigationPromise = new Promise((resolve) => {
-                    this.navigationPromises.set(commandId, resolve);
-                });
-
-                // Update the current tab
-                const tab = await chrome.tabs.update({ url: url });
-
-                // Wait for navigation to complete
-                await new Promise(resolve => {
-                    chrome.tabs.onUpdated.addListener(function listener(tabId, info) {
-                        if (tabId === tab.id && info.status === 'complete') {
-                            chrome.tabs.onUpdated.removeListener(listener);
-                            resolve();
-                        }
-                    });
-                });
-
-                // Send success response
-                this.wsManager.sendMessage({
-                    type: 'SCRIPT_RESULT',
-                    status: 'success',
-                    result: true,
-                    command_id: commandId
-                });
-
-            } else {
-                // Handle other commands as before
-                await this.tabManager.executeCommand(data.command);
-            }
-        } catch (error) {
-            console.error('[Background] Error handling WebSocket message:', error);
-            this.wsManager.sendMessage({
-                type: 'SCRIPT_ERROR',
-                status: 'error',
-                error: error.message,
-                stack: error.stack,
-                command_id: data.command?.command_id
-            });
+    try {
+        if (data.type === 'error') {
+            console.error('[Background] WebSocket error:', data.error);
+            return;
         }
+
+        if (data.type === 'automation_command') {
+            console.log('[Background] Executing automation command:', data.command);
+
+            // Format command if needed
+            const command = {
+                type: 'EXECUTE_SCRIPT',
+                script: data.command.script || data.command,
+                command_id: data.command.command_id
+            };
+
+            await this.tabManager.executeCommand(command);
+        }
+    } catch (error) {
+        console.error('[Background] Error handling WebSocket message:', error);
+        this.wsManager.sendMessage({
+            type: 'SCRIPT_ERROR',
+            status: 'error',
+            error: error.message,
+            stack: error.stack,
+            command_id: data.command?.command_id
+        });
     }
+}
 }
 
 // Initialize the background manager
