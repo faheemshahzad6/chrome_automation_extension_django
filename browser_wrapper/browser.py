@@ -310,8 +310,22 @@ class EnhancedBrowser:
 
     def quit(self):
         """Close the browser session"""
-        self.session.close()
+        pass
+        # self.session.close()
 
     def close(self):
         """Close the current window (alias for quit)"""
-        self.quit()
+        pass
+        # self.quit()
+
+    def get_all_storage(self) -> Dict[str, Any]:
+        """Get all storage data including localStorage, sessionStorage, and cookies"""
+        return self._execute_command("get_all_storage")
+
+    def get_cookies(self) -> List[Dict[str, str]]:
+        """Get all cookies from the current page"""
+        return self._execute_command("get_cookies")
+
+    def get_metadata(self) -> Dict[str, str]:
+        """Get page metadata"""
+        return self._execute_command("get_metadata")

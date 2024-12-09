@@ -1,6 +1,7 @@
 from typing import Dict, Any
 from .base import DOMCommand
 
+
 class GetElementCommand(DOMCommand):
     def __init__(self):
         super().__init__(
@@ -14,6 +15,7 @@ class GetElementCommand(DOMCommand):
 
     def build_script(self, **kwargs) -> str:
         return f"{self.script_name}|{kwargs['selector']}"
+
 
 class FindElementByXPathCommand(DOMCommand):
     def __init__(self):
@@ -29,6 +31,7 @@ class FindElementByXPathCommand(DOMCommand):
     def build_script(self, **kwargs) -> str:
         return f"{self.script_name}|{kwargs['xpath']}"
 
+
 class FindElementsByXPathCommand(DOMCommand):
     def __init__(self):
         super().__init__(
@@ -42,6 +45,7 @@ class FindElementsByXPathCommand(DOMCommand):
 
     def build_script(self, **kwargs) -> str:
         return f"{self.script_name}|{kwargs['xpath']}"
+
 
 class ClickElementCommand(DOMCommand):
     def __init__(self):
@@ -57,6 +61,7 @@ class ClickElementCommand(DOMCommand):
     def build_script(self, **kwargs) -> str:
         return f"{self.script_name}|{kwargs['selector']}"
 
+
 class SendKeysCommand(DOMCommand):
     def __init__(self):
         super().__init__(
@@ -70,6 +75,7 @@ class SendKeysCommand(DOMCommand):
 
     def build_script(self, **kwargs) -> str:
         return f"{self.script_name}|{kwargs['selector']}|{kwargs['value']}"
+
 
 class ClearElementCommand(DOMCommand):
     def __init__(self):
@@ -85,6 +91,7 @@ class ClearElementCommand(DOMCommand):
     def build_script(self, **kwargs) -> str:
         return f"{self.script_name}|{kwargs['selector']}"
 
+
 class SubmitFormCommand(DOMCommand):
     def __init__(self):
         super().__init__(
@@ -98,6 +105,7 @@ class SubmitFormCommand(DOMCommand):
 
     def build_script(self, **kwargs) -> str:
         return f"{self.script_name}|{kwargs['selector']}"
+
 
 class IsElementEnabledCommand(DOMCommand):
     def __init__(self):
@@ -113,6 +121,7 @@ class IsElementEnabledCommand(DOMCommand):
     def build_script(self, **kwargs) -> str:
         return f"{self.script_name}|{kwargs['selector']}"
 
+
 class IsElementSelectedCommand(DOMCommand):
     def __init__(self):
         super().__init__(
@@ -126,6 +135,7 @@ class IsElementSelectedCommand(DOMCommand):
 
     def build_script(self, **kwargs) -> str:
         return f"{self.script_name}|{kwargs['selector']}"
+
 
 class IsElementDisplayedCommand(DOMCommand):
     def __init__(self):
@@ -141,6 +151,7 @@ class IsElementDisplayedCommand(DOMCommand):
     def build_script(self, **kwargs) -> str:
         return f"{self.script_name}|{kwargs['selector']}"
 
+
 class GetElementAttributeCommand(DOMCommand):
     def __init__(self):
         super().__init__(
@@ -154,6 +165,7 @@ class GetElementAttributeCommand(DOMCommand):
 
     def build_script(self, **kwargs) -> str:
         return f"{self.script_name}|{kwargs['selector']}|{kwargs['attribute']}"
+
 
 class GetElementTextCommand(DOMCommand):
     def __init__(self):
@@ -169,6 +181,7 @@ class GetElementTextCommand(DOMCommand):
     def build_script(self, **kwargs) -> str:
         return f"{self.script_name}|{kwargs['selector']}"
 
+
 class GetElementCssValueCommand(DOMCommand):
     def __init__(self):
         super().__init__(
@@ -182,6 +195,7 @@ class GetElementCssValueCommand(DOMCommand):
 
     def build_script(self, **kwargs) -> str:
         return f"{self.script_name}|{kwargs['selector']}|{kwargs['property_name']}"
+
 
 class NavigateCommand(DOMCommand):
     def __init__(self):
@@ -197,6 +211,7 @@ class NavigateCommand(DOMCommand):
     def build_script(self, **kwargs) -> str:
         return f"{self.script_name}|{kwargs['url']}"
 
+
 class GoBackCommand(DOMCommand):
     def __init__(self):
         super().__init__(
@@ -207,6 +222,7 @@ class GoBackCommand(DOMCommand):
 
     def build_script(self, **kwargs) -> str:
         return self.script_name
+
 
 class GoForwardCommand(DOMCommand):
     def __init__(self):
@@ -219,6 +235,7 @@ class GoForwardCommand(DOMCommand):
     def build_script(self, **kwargs) -> str:
         return self.script_name
 
+
 class RefreshCommand(DOMCommand):
     def __init__(self):
         super().__init__(
@@ -229,6 +246,7 @@ class RefreshCommand(DOMCommand):
 
     def build_script(self, **kwargs) -> str:
         return self.script_name
+
 
 class GetTitleCommand(DOMCommand):
     def __init__(self):
@@ -241,6 +259,7 @@ class GetTitleCommand(DOMCommand):
     def build_script(self, **kwargs) -> str:
         return self.script_name
 
+
 class GetUrlCommand(DOMCommand):
     def __init__(self):
         super().__init__(
@@ -252,12 +271,37 @@ class GetUrlCommand(DOMCommand):
     def build_script(self, **kwargs) -> str:
         return self.script_name
 
+
 class GetMetadataCommand(DOMCommand):
     def __init__(self):
         super().__init__(
             name="getMetadata",
             description="Get page metadata",
             script_name="getMetadata"
+        )
+
+    def build_script(self, **kwargs) -> str:
+        return self.script_name
+
+
+class GetAllStorageCommand(DOMCommand):
+    def __init__(self):
+        super().__init__(
+            name="getAllStorage",  # Match the command name in registry
+            description="Get all storage data including cookies, localStorage, and sessionStorage",
+            script_name="getAllStorage"  # Match the script name in basic-commands.js
+        )
+
+    def build_script(self, **kwargs) -> str:
+        return self.script_name
+
+
+class GetCookiesCommand(DOMCommand):
+    def __init__(self):
+        super().__init__(
+            name="get_cookies",
+            description="Get all cookies from the current page",
+            script_name="getCookies"
         )
 
     def build_script(self, **kwargs) -> str:

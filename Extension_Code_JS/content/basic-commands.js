@@ -80,6 +80,56 @@ window.basicCommands = {
             throw error;
         }
     },
+    getAllStorage: async () => {
+        try {
+            window.automationLogger.info('Executing getAllStorage command');
+            const storage = {
+                localStorage: {},
+                sessionStorage: {},
+                cookies: []
+            };
+
+            // Get localStorage
+            for (let i = 0; i < window.localStorage.length; i++) {
+                const key = window.localStorage.key(i);
+                storage.localStorage[key] = window.localStorage.getItem(key);
+            }
+
+            // Get sessionStorage
+            for (let i = 0; i < window.sessionStorage.length; i++) {
+                const key = window.sessionStorage.key(i);
+                storage.sessionStorage[key] = window.sessionStorage.getItem(key);
+            }
+
+            // Get cookies
+            storage.cookies = document.cookie.split(';')
+                .map(cookie => {
+                    const [name, value] = cookie.split('=').map(c => c.trim());
+                    return { name, value };
+                })
+                .filter(cookie => cookie.name);
+
+            return storage;
+        } catch (error) {
+            window.automationLogger.error('Error in getAllStorage', error);
+            throw error;
+        }
+    },
+
+    getCookies: () => {
+        try {
+            window.automationLogger.info('Executing getCookies command');
+            return document.cookie.split(';')
+                .map(cookie => {
+                    const [name, value] = cookie.split('=').map(c => c.trim());
+                    return { name, value };
+                })
+                .filter(cookie => cookie.name);
+        } catch (error) {
+            window.automationLogger.error('Error in getCookies', error);
+            throw error;
+        }
+    },
 
     getMetadata: () => {
         try {
