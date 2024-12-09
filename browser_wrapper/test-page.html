@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Test page for browser automation">
+    <meta name="keywords" content="testing, automation, selenium">
+    <title>Browser Automation Test Page</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 20px;
+        }
+        .test-section {
+            border: 1px solid #ccc;
+            margin: 20px 0;
+            padding: 20px;
+            border-radius: 4px;
+        }
+        .hidden-element {
+            display: none;
+        }
+        .delayed-element {
+            display: none;
+        }
+        #hoverDiv {
+            background: #f0f0f0;
+            padding: 10px;
+            transition: background 0.3s;
+        }
+        #hoverDiv:hover {
+            background: #ddd;
+        }
+        .alert-box {
+            display: none;
+            padding: 10px;
+            background: #ffebee;
+            border: 1px solid #ffcdd2;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>Browser Automation Test Page</h1>
+
+    <!-- Basic Elements Section -->
+    <div class="test-section" id="basicElements">
+        <h2>Basic Elements</h2>
+        <input type="text" id="textInput" name="textInput" placeholder="Enter text here">
+        <button id="submitButton" onclick="document.getElementById('result').textContent = document.getElementById('textInput').value">
+            Submit
+        </button>
+        <div id="result"></div>
+    </div>
+
+    <!-- Form Elements Section -->
+    <div class="test-section" id="formElements">
+        <h2>Form Elements</h2>
+        <form id="testForm" onsubmit="event.preventDefault(); showFormAlert();">
+            <div>
+                <label for="username">Username:</label>
+                <input type="text" id="username" name="username" required>
+            </div>
+            <div>
+                <label for="password">Password:</label>
+                <input type="password" id="password" name="password" required>
+            </div>
+            <div>
+                <label>Gender:</label>
+                <input type="radio" id="male" name="gender" value="male">
+                <label for="male">Male</label>
+                <input type="radio" id="female" name="gender" value="female">
+                <label for="female">Female</label>
+            </div>
+            <div>
+                <label>Interests:</label>
+                <input type="checkbox" id="coding" name="interests" value="coding">
+                <label for="coding">Coding</label>
+                <input type="checkbox" id="reading" name="interests" value="reading">
+                <label for="reading">Reading</label>
+            </div>
+            <div>
+                <label for="country">Country:</label>
+                <select id="country" name="country">
+                    <option value="">Select a country</option>
+                    <option value="us">United States</option>
+                    <option value="uk">United Kingdom</option>
+                    <option value="ca">Canada</option>
+                </select>
+            </div>
+            <div>
+                <label for="comments">Comments:</label>
+                <textarea id="comments" name="comments"></textarea>
+            </div>
+            <button type="submit">Submit Form</button>
+        </form>
+        <div id="formAlert" class="alert-box">Form submitted!</div>
+    </div>
+
+    <!-- Dynamic Elements Section -->
+    <div class="test-section" id="dynamicElements">
+        <h2>Dynamic Elements</h2>
+        <button onclick="showDelayedElement()">Show Delayed Element</button>
+        <div id="delayedDiv" class="delayed-element">
+            This element appears after a delay
+        </div>
+        <div id="hoverDiv">
+            Hover over me
+        </div>
+    </div>
+
+    <!-- Iframe Section -->
+    <div class="test-section" id="iframeSection">
+        <h2>IFrame Testing</h2>
+        <iframe id="testIframe" src="about:blank" width="100%" height="100"></iframe>
+    </div>
+
+    <!-- Storage Testing Section -->
+    <div class="test-section" id="storageTest">
+        <h2>Storage Testing</h2>
+        <button onclick="setTestStorage()">Set Storage Values</button>
+        <button onclick="clearTestStorage()">Clear Storage</button>
+    </div>
+
+    <script>
+        // Dynamic element handling
+        function showDelayedElement() {
+            setTimeout(() => {
+                document.getElementById('delayedDiv').style.display = 'block';
+            }, 1000);
+        }
+
+        // Form handling
+        function showFormAlert() {
+            const alert = document.getElementById('formAlert');
+            alert.style.display = 'block';
+            setTimeout(() => {
+                alert.style.display = 'none';
+            }, 3000);
+        }
+
+        // Storage testing
+        function setTestStorage() {
+            localStorage.setItem('testKey', 'testValue');
+            sessionStorage.setItem('sessionKey', 'sessionValue');
+            document.cookie = 'testCookie=cookieValue; path=/';
+        }
+
+        function clearTestStorage() {
+            localStorage.removeItem('testKey');
+            sessionStorage.removeItem('sessionKey');
+            document.cookie = 'testCookie=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/';
+        }
+
+        // Initialize iframe content
+        window.onload = function() {
+            const iframe = document.getElementById('testIframe');
+            const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+            iframeDoc.body.innerHTML = '<div>Iframe content</div>';
+        }
+    </script>
+</body>
+</html>
