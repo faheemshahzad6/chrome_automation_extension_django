@@ -107,71 +107,139 @@ window.basicCommands = {
     find_element_by_xpath: async (params) => {
     try {
         window.automationLogger.info('Executing find_element_by_xpath command', params);
-        const xpath = params.xpath;
-            const result = document.evaluate(
-                xpath,
-                document,
-                null,
-                XPathResult.FIRST_ORDERED_NODE_TYPE,
-                null
-            );
-            const element = result.singleNodeValue;
-            if (!element) {
-                return null;
-            }
-            return {
-                tagName: element.tagName,
-                id: element.id,
-                className: element.className,
-                textContent: element.textContent.trim(),
-                value: element.value,
-                type: element.type,
-                attributes: Array.from(element.attributes).reduce((acc, attr) => {
-                    acc[attr.name] = attr.value;
-                    return acc;
-                }, {}),
-                isDisplayed: window.getComputedStyle(element).display !== 'none',
-                isEnabled: !element.disabled,
-                isSelected: element.selected || element.checked || false,
-                xpath: xpath
-            };
-        } catch (error) {
-            window.automationLogger.error('Error in find_element_by_xpath', error);
-            throw error;
+
+        // Check if params exists and has xpath property
+        if (!params || typeof params !== 'object') {
+            throw new Error('Invalid parameters: expected object with xpath property');
         }
-    },
+
+        if (!params.xpath || typeof params.xpath !== 'string') {
+            throw new Error('XPath selector is required');
+        }
+
+        // Create XPath evaluator
+        const result = document.evaluate(
+            params.xpath,
+            document,
+            null,
+            XPathResult.FIRST_ORDERED_NODE_TYPE,
+            null
+        );
+
+        const element = result.singleNodeValue;
+
+        // If no element found, return null
+        if (!element) {
+            window.automationLogger.info('No element found for XPath:', params.xpath);
+            return null;
+        }
+
+        // Get computed style for visibility check
+        const style = window.getComputedStyle(element);
+
+        // Build element properties
+        const rect = element.getBoundingClientRect();
+        const elementInfo = {
+            tagName: element.tagName.toLowerCase(),
+            id: element.id || '',
+            className: element.className || '',
+            textContent: element.textContent?.trim() || '',
+            value: element.value || '',
+            type: element.type || '',
+            attributes: {},
+            isDisplayed: style.display !== 'none' &&
+                        style.visibility !== 'hidden' &&
+                        rect.width > 0 &&
+                        rect.height > 0,
+            isEnabled: !element.disabled,
+            isSelected: element.selected || element.checked || false,
+            xpath: params.xpath,
+            boundingBox: {
+                top: rect.top,
+                right: rect.right,
+                bottom: rect.bottom,
+                left: rect.left,
+                width: rect.width,
+                height: rect.height
+            }
+        };
+
+        // Get all attributes
+        for (const attr of element.attributes) {
+            elementInfo.attributes[attr.name] = attr.value;
+        }
+
+        window.automationLogger.success('Element found by XPath', {
+            xpath: params.xpath,
+            tagName: elementInfo.tagName
+        });
+
+        return elementInfo;
+
+    } catch (error) {
+        window.automationLogger.error('Error in find_element_by_xpath', error);
+        throw error;
+    }
+},
 
     find_elements_by_xpath: (params) => {
         try {
             window.automationLogger.info('Executing find_elements_by_xpath command', params);
-            const xpath = params.xpath;
+
+            if (!params || !params.xpath) {
+                throw new Error('XPath selector is required');
+            }
+
             const result = document.evaluate(
-                xpath,
+                params.xpath,
                 document,
                 null,
                 XPathResult.ORDERED_NODE_SNAPSHOT_TYPE,
                 null
             );
+
             const elements = [];
             for (let i = 0; i < result.snapshotLength; i++) {
                 const element = result.snapshotItem(i);
+                if (!element) continue;
+
+                const style = window.getComputedStyle(element);
+                const rect = element.getBoundingClientRect();
+
                 elements.push({
-                    tagName: element.tagName,
-                    id: element.id,
-                    className: element.className,
-                    textContent: element.textContent.trim(),
-                    value: element.value,
-                    type: element.type,
+                    tagName: element.tagName.toLowerCase(),
+                    id: element.id || '',
+                    className: element.className || '',
+                    textContent: element.textContent?.trim() || '',
+                    value: element.value || '',
+                    type: element.type || '',
                     attributes: Array.from(element.attributes).reduce((acc, attr) => {
                         acc[attr.name] = attr.value;
                         return acc;
                     }, {}),
-                    isDisplayed: window.getComputedStyle(element).display !== 'none',
+                    isDisplayed: style.display !== 'none' &&
+                                style.visibility !== 'hidden' &&
+                                rect.width > 0 &&
+                                rect.height > 0,
                     isEnabled: !element.disabled,
                     isSelected: element.selected || element.checked || false,
-                    xpath: `(${xpath})[${i + 1}]`
+                    xpath: `(${params.xpath})[${i + 1}]`,
+                    boundingBox: {
+                        top: rect.top,
+                        right: rect.right,
+                        bottom: rect.bottom,
+                        left: rect.left,
+                        width: rect.width,
+                        height: rect.height
+                    }
                 });
             }
+
+            window.automationLogger.success('Elements found by XPath', {
+                xpath: params.xpath,
+                count: elements.length
+            });
+
             return elements;
         } catch (error) {
             window.automationLogger.error('Error in find_elements_by_xpath', error);

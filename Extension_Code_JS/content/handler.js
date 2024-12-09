@@ -217,9 +217,14 @@ window.AutomationHandler = class AutomationHandler {
             throw new Error('Invalid command format: empty command name');
         }
 
+        // Handle different command parameter formats
         let params = {};
         if (parts.length > 1) {
-            if (command === 'navigate') {
+            if (command === 'find_element_by_xpath' || command === 'find_elements_by_xpath') {
+                params = {
+                    xpath: parts[1]
+                };
+            } else if (command === 'navigate') {
                 params = { url: parts[1].trim() };
             } else {
                 try {
