@@ -18,9 +18,9 @@ class GetElementCommand(DOMCommand):
 class FindElementByXPathCommand(DOMCommand):
     def __init__(self):
         super().__init__(
-            name="findElementByXPath",  # Changed from find_element_by_xpath
+            name="find_element_by_xpath",  # Updated to match
             description="Find element by XPath",
-            script_name="findElementByXPath"
+            script_name="find_element_by_xpath"
         )
 
     def validate_params(self, **kwargs) -> bool:

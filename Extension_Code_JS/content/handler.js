@@ -16,6 +16,9 @@ window.AutomationHandler = class AutomationHandler {
                 throw new Error('Invalid commands object provided');
             }
 
+            // Log all command names being registered
+            window.automationLogger.info('Registering commands with names:', Object.keys(commandsObject));
+
             // Register each command
             Object.entries(commandsObject).forEach(([name, fn]) => {
                 if (typeof fn !== 'function') {

@@ -104,10 +104,10 @@ window.basicCommands = {
     },
 
     // Element Finding Commands
-    find_element_by_xpath: (params) => {
-        try {
-            window.automationLogger.info('Executing find_element_by_xpath command', params);
-            const xpath = params.xpath;
+    find_element_by_xpath: async (params) => {
+    try {
+        window.automationLogger.info('Executing find_element_by_xpath command', params);
+        const xpath = params.xpath;
             const result = document.evaluate(
                 xpath,
                 document,

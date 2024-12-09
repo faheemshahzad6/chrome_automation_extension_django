@@ -247,7 +247,7 @@ class EnhancedBrowser:
         if not self._wait_for_element(xpath):
             raise ElementNotFound(f"Element not found: {xpath}")
 
-        result = self._execute_command("findElementByXPath", {"xpath": xpath})
+        result = self._execute_command("find_element_by_xpath", {"xpath": xpath})
         if not result:
             raise ElementNotFound(f"Element not found: {xpath}")
 
