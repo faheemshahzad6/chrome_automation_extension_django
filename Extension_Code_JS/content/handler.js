@@ -78,29 +78,32 @@ window.AutomationHandler = class AutomationHandler {
         };
     }
 
-    // In handler.js, update the setupMessageListener method:
+    // In handler.js, replace the setupMessageListener method with:
     setupMessageListener() {
     chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+        // Immediate validation
         if (!message || !message.type || !message.action) {
-            return false;  // Return early if message is invalid
+            sendResponse({
+                type: 'SCRIPT_ERROR',
+                status: 'error',
+                error: 'Invalid message format'
+            });
+            return false;
         }
 
         if (message.type === 'EXECUTE_ACTION') {
-            // Validate action object
-            if (!message.action.type) {
-                sendResponse({
-                    type: 'SCRIPT_ERROR',
-                    status: 'error',
-                    error: 'Invalid action format: missing type',
-                    command_id: message.action?.command_id
-                });
-                return false;
-            }
+            // Send immediate acknowledgment
+            sendResponse({
+                type: 'RECEIVED',
+                status: 'processing',
+                command_id: message.action.command_id
+            });
 
-            // Handle command execution
+            // Handle the action
             this.handleAction(message.action)
                 .then(result => {
-                    sendResponse({
+                    // Send result through runtime message
+                    chrome.runtime.sendMessage({
                         type: 'SCRIPT_RESULT',
                         status: 'success',
                         result: result,
@@ -108,7 +111,8 @@ window.AutomationHandler = class AutomationHandler {
                     });
                 })
                 .catch(error => {
-                    sendResponse({
+                    // Send error through runtime message
+                    chrome.runtime.sendMessage({
                         type: 'SCRIPT_ERROR',
                         status: 'error',
                         error: error.message,
@@ -117,22 +121,23 @@ window.AutomationHandler = class AutomationHandler {
                     });
                 });
 
-            return true;  // Keep message port open for async response
+            return false; // We've already sent the response
         }
 
-        return false;
+        return false; // Not handling other message types
     });
 }
 
+    // In handler.js, update the handleAction method:
     async handleAction(action) {
     window.automationLogger.info('Handling action', action);
+
     try {
         if (action.type !== 'EXECUTE_SCRIPT') {
             throw new Error(`Unknown action type: ${action.type}`);
         }
 
         const { command, params } = this.parseCommand(action.script);
-        window.automationLogger.info('Available commands:', Object.keys(this.commands));
 
         if (!this.commands[command]) {
             throw new Error(`Unknown command: ${command}`);
@@ -147,15 +152,15 @@ window.AutomationHandler = class AutomationHandler {
         });
 
         try {
+            let result;
             // Special handling for navigation commands
             if (command === 'navigate') {
-                const result = await this.commands[command](params);
-                this.activeRequests.delete(requestId);
-                return result;
+                result = await this.handleNavigationCommand(command, params);
+            } else {
+                // Execute regular command
+                result = await Promise.resolve(this.commands[command](params));
             }
 
-            // Execute regular command
-            const result = await this.commands[command](params);
             this.activeRequests.delete(requestId);
             return this.formatResult(result);
         } catch (error) {

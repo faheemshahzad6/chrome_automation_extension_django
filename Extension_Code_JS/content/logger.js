@@ -8,8 +8,12 @@ window.automationLogger = {
         console.log(`%c[Content Script Success] ${logMessage}`, 'color: #4CAF50');
     },
     error: (message, error = null) => {
-        const logMessage = error ? `${message}: ${error.message}` : message;
+        const logMessage = error ?
+            `${message}: ${error.message || error}` :
+            message;
+
         console.error(`%c[Content Script Error] ${logMessage}`, 'color: #f44336');
+
         if (error?.stack) {
             console.error(`%c[Stack Trace] ${error.stack}`, 'color: #f44336');
         }

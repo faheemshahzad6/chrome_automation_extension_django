@@ -33,32 +33,39 @@ class BackgroundManager {
     }
 
     async handleMessage(message, sender, sendResponse) {
-        try {
-            switch (message.action) {
-                case 'toggleLogging':
-                    await this.handleToggleLogging(message, sendResponse);
-                    break;
+    try {
+        console.log('[Background] Received message:', message);
 
-                case 'getState':
-                    sendResponse({ isLogging: this.isEnabled });
-                    break;
+        switch (message.action) {
+            case 'toggleLogging':
+                await this.handleToggleLogging(message, sendResponse);
+                break;
 
-                default:
-                    if (!this.isEnabled) {
-                        sendResponse({ error: 'Extension is disabled' });
-                        return;
-                    }
+            case 'getState':
+                sendResponse({
+                    isLogging: this.isEnabled,
+                    wsState: this.wsManager.getState()
+                });
+                break;
 
-                    if (message.type === 'SCRIPT_RESULT' || message.type === 'SCRIPT_ERROR') {
-                        this.wsManager.sendMessage(message);
-                        sendResponse({ received: true });
-                    }
-            }
-        } catch (error) {
-            console.error('Error handling message:', error);
-            sendResponse({ error: error.message });
+            default:
+                if (!this.isEnabled) {
+                    sendResponse({ error: 'Extension is disabled' });
+                    return;
+                }
+
+                if (message.type === 'SCRIPT_RESULT' || message.type === 'SCRIPT_ERROR') {
+                    await this.wsManager.sendMessage(message);
+                    sendResponse({ received: true });
+                } else {
+                    sendResponse({ error: 'Unknown message type' });
+                }
         }
+    } catch (error) {
+        console.error('[Background] Error handling message:', error);
+        sendResponse({ error: error.message });
     }
+}
 
     async handleToggleLogging(message, sendResponse) {
         this.isEnabled = message.value;

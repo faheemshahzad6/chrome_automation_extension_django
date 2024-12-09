@@ -74,13 +74,11 @@ export class TabManager {
     // In tab-manager.js, update the sendMessageToTab method:
     sendMessageToTab(tabId, command) {
     return new Promise((resolve, reject) => {
-        try {
-            // Validate command object
-            if (!command || typeof command !== 'object') {
-                reject(new Error('Invalid command format'));
-                return;
-            }
+        const timeout = setTimeout(() => {
+            reject(new Error('Tab message timeout'));
+        }, 30000); // 30 second timeout
 
+        try {
             chrome.tabs.sendMessage(
                 tabId,
                 {
@@ -88,6 +86,8 @@ export class TabManager {
                     action: command
                 },
                 (response) => {
+                    clearTimeout(timeout);
+
                     if (chrome.runtime.lastError) {
                         reject(chrome.runtime.lastError);
                         return;
@@ -103,10 +103,23 @@ export class TabManager {
                         return;
                     }
 
-                    resolve(response);
+                    if (response.type === 'RECEIVED') {
+                        // Setup listener for the actual result
+                        chrome.runtime.onMessage.addListener(function listener(msg) {
+                            if (msg.command_id === command.command_id) {
+                                chrome.runtime.onMessage.removeListener(listener);
+                                if (msg.type === 'SCRIPT_ERROR') {
+                                    reject(new Error(msg.error));
+                                } else {
+                                    resolve(msg.result);
+                                }
+                            }
+                        });
+                    }
                 }
             );
         } catch (error) {
+            clearTimeout(timeout);
             reject(error);
         }
     });
