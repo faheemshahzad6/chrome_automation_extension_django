@@ -214,98 +214,101 @@ window.AutomationHandler = class AutomationHandler {
 
     // In handler.js, update the parseCommand method:
     parseCommand(script) {
-        try {
-            if (!script || typeof script !== 'string') {
-                throw new Error('Invalid command format: script must be a string');
-            }
-
-            const parts = script.split('|');
-            if (parts.length === 0) {
-                throw new Error('Invalid command format: empty command');
-            }
-
-            // Get the raw command
-            const commandRaw = parts[0].trim();
-
-            // Comprehensive command mapping (case-insensitive)
-            const commandMap = {
-                // Click variations
-                'click': 'click_element',
-                'clickelement': 'click_element',
-                'click_element': 'click_element',
-
-                // Clear variations
-                'clear': 'clear_element',
-                'clearelement': 'clear_element',
-                'clear_element': 'clear_element',
-
-                // Send keys variations
-                'sendkeys': 'send_keys',
-                'send_keys': 'send_keys',
-
-                // Keep original command mapping intact
-                'find_element_by_xpath': 'find_element_by_xpath',
-                'find_elements_by_xpath': 'find_elements_by_xpath'
-            };
-
-            // Convert to lowercase for matching
-            const commandLower = commandRaw.toLowerCase();
-
-            // Get standardized command name, preserving original if no mapping exists
-            const standardCommand = commandMap[commandLower] || commandRaw;
-
-            // Parse parameters based on command type
-            let params = {};
-            if (parts.length > 1) {
-                switch (standardCommand) {
-                    case 'send_keys':
-                        if (parts.length < 3) {
-                            throw new Error('send_keys requires both selector and value parameters');
-                        }
-                        params = {
-                            selector: parts[1],
-                            value: parts[2]
-                        };
-                        break;
-                    case 'clear_element':
-                    case 'click_element':
-                        params = {
-                            selector: parts[1]
-                        };
-                        break;
-                    case 'find_element_by_xpath':
-                    case 'find_elements_by_xpath':
-                        params = {
-                            xpath: parts[1]
-                        };
-                        break;
-                    case 'navigate':
-                        params = {
-                            url: parts[1]
-                        };
-                        break;
-                    default:
-                        try {
-                            // Try parsing as JSON for other commands
-                            params = JSON.parse(parts[1]);
-                        } catch {
-                            // If not JSON, use as-is
-                            params = parts.length === 2 ? parts[1] : parts.slice(1);
-                        }
-                }
-            }
-
-            window.automationLogger.info('Parsed command:', {
-                original: commandRaw,
-                standardized: standardCommand,
-                params
-            });
-
-            return { command: standardCommand, params };
-        } catch (error) {
-            throw new Error(`Command parsing error: ${error.message}`);
+    try {
+        if (!script || typeof script !== 'string') {
+            throw new Error('Invalid command format: script must be a string');
         }
+
+        const parts = script.split('|');
+        if (parts.length === 0) {
+            throw new Error('Invalid command format: empty command');
+        }
+
+        // Get the raw command
+        const commandRaw = parts[0].trim();
+
+        // Comprehensive command mapping (case-insensitive)
+        const commandMap = {
+            // Click variations
+            'click': 'click_element',
+            'clickelement': 'click_element',
+            'click_element': 'click_element',
+
+            // Clear variations
+            'clear': 'clear_element',
+            'clearelement': 'clear_element',
+            'clear_element': 'clear_element',
+
+            // Send keys variations
+            'sendkeys': 'send_keys',
+            'send_keys': 'send_keys',
+
+            // Text variations
+            'text': 'get_element_text',
+            'gettext': 'get_element_text',
+            'get_text': 'get_element_text',
+            'getelementtext': 'get_element_text',
+            'get_element_text': 'get_element_text',
+
+            // Keep original command mapping intact
+            'find_element_by_xpath': 'find_element_by_xpath',
+            'find_elements_by_xpath': 'find_elements_by_xpath'
+        };
+
+        // Convert to lowercase for matching
+        const commandLower = commandRaw.toLowerCase();
+
+        // Get standardized command name, preserving original if no mapping exists
+        const standardCommand = commandMap[commandLower] || commandRaw;
+
+        // Parse parameters based on command type
+        let params = {};
+        if (parts.length > 1) {
+            switch (standardCommand) {
+                case 'get_element_text':
+                case 'clear_element':
+                case 'click_element':
+                    params = {
+                        selector: parts[1]
+                    };
+                    break;
+                case 'send_keys':
+                    if (parts.length < 3) {
+                        throw new Error('send_keys requires both selector and value parameters');
+                    }
+                    params = {
+                        selector: parts[1],
+                        value: parts[2]
+                    };
+                    break;
+                case 'find_element_by_xpath':
+                case 'find_elements_by_xpath':
+                    params = {
+                        xpath: parts[1]
+                    };
+                    break;
+                default:
+                    try {
+                        // Try parsing as JSON for other commands
+                        params = JSON.parse(parts[1]);
+                    } catch {
+                        // If not JSON, use as-is
+                        params = parts.length === 2 ? parts[1] : parts.slice(1);
+                    }
+            }
+        }
+
+        window.automationLogger.info('Parsed command:', {
+            original: commandRaw,
+            standardized: standardCommand,
+            params
+        });
+
+        return { command: standardCommand, params };
+    } catch (error) {
+        throw new Error(`Command parsing error: ${error.message}`);
     }
+}
 
     formatResult(result) {
         try {

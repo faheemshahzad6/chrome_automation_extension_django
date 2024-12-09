@@ -462,9 +462,14 @@ window.basicCommands = {
     },
 
     // Element Property Commands
-    get_element_text: (params) => {
+    get_element_text: async (params) => {
         try {
             window.automationLogger.info('Executing get_element_text command', params);
+
+            if (!params || !params.selector) {
+                throw new Error('Selector is required for get_element_text command');
+            }
+
             const element = document.evaluate(
                 params.selector,
                 document,
@@ -477,7 +482,13 @@ window.basicCommands = {
                 throw new Error(`Element not found: ${params.selector}`);
             }
 
-            return element.textContent.trim();
+            // For input/textarea elements, return the value
+            if (element instanceof HTMLInputElement || element instanceof HTMLTextAreaElement) {
+                return element.value || '';
+            }
+
+            // For all other elements, return the text content
+            return element.textContent?.trim() || '';
         } catch (error) {
             window.automationLogger.error('Error in get_element_text', error);
             throw error;
