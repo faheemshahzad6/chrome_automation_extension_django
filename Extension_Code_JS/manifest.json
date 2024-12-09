@@ -11,7 +11,8 @@
   ],
   "host_permissions": [
     "http://localhost:1234/*",
-    "ws://localhost:1234/*"
+    "ws://localhost:1234/*",
+    "<all_urls>"
   ],
   "background": {
     "service_worker": "background/main.js",

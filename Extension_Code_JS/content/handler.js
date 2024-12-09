@@ -78,35 +78,39 @@ window.AutomationHandler = class AutomationHandler {
         };
     }
 
-    // In content/handler.js
+    // In handler.js
     setupMessageListener() {
-        chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-            if (message.type === 'EXECUTE_ACTION') {
-                // Handle non-navigation commands
-                if (!message.action.script.startsWith('navigate')) {
-                    this.handleAction(message.action)
-                        .then(result => {
-                            sendResponse({
-                                type: 'SCRIPT_RESULT',
-                                status: 'success',
-                                result: result,
-                                command_id: message.action.command_id
-                            });
-                        })
-                        .catch(error => {
-                            sendResponse({
-                                type: 'SCRIPT_ERROR',
-                                status: 'error',
-                                error: error.message,
-                                stack: error.stack,
-                                command_id: message.action.command_id
-                            });
+    chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+        if (!message || !message.type) {
+            return;
+        }
+
+        if (message.type === 'EXECUTE_ACTION' && message.action) {
+            // Handle non-navigation commands
+            if (!message.action.script?.startsWith('navigate')) {
+                this.handleAction(message.action)
+                    .then(result => {
+                        sendResponse({
+                            type: 'SCRIPT_RESULT',
+                            status: 'success',
+                            result: result,
+                            command_id: message.action.command_id
                         });
-                    return true;
-                }
+                    })
+                    .catch(error => {
+                        sendResponse({
+                            type: 'SCRIPT_ERROR',
+                            status: 'error',
+                            error: error.message,
+                            stack: error.stack,
+                            command_id: message.action.command_id
+                        });
+                    });
+                return true;
             }
-        });
-    }
+        }
+    });
+}
 
     async handleAction(action) {
         window.automationLogger.info('Handling action', action);
