@@ -11,7 +11,7 @@ try:
 
     # Try to find and interact with the search box
     try:
-        search_box = browser.find_element_by_xpath('//html')
+        search_box = browser.find_element_by_xpath('//input[@name="search"]')
         search_box.send_keys("13912 W Pavillion Dr")
     except Exception as e:
         # Try alternative selectors if the first one fails

@@ -142,26 +142,38 @@ window.AutomationHandler = class AutomationHandler {
 
         const { command, params } = this.parseCommand(action.script);
 
-        if (!this.commands[command]) {
+        // Convert command name to lowercase for case-insensitive matching
+        const normalizedCommand = command.toLowerCase();
+        const availableCommands = Object.keys(this.commands).map(cmd => cmd.toLowerCase());
+
+        if (!availableCommands.includes(normalizedCommand)) {
             throw new Error(`Unknown command: ${command}`);
         }
+
+        // Find the actual command name with original casing
+        const actualCommand = Object.keys(this.commands).find(
+            cmd => cmd.toLowerCase() === normalizedCommand
+        );
 
         // Track the request
         const requestId = action.command_id || Date.now().toString();
         this.activeRequests.set(requestId, {
-            command,
+            command: actualCommand,
             params,
             startTime: Date.now()
         });
 
         try {
             let result;
-            // Special handling for navigation commands
-            if (command === 'navigate') {
-                result = await this.handleNavigationCommand(command, params);
+            if (actualCommand === 'navigate') {
+                result = await this.handleNavigationCommand(actualCommand, params);
             } else {
-                // Execute regular command
-                result = await Promise.resolve(this.commands[command](params));
+                result = await Promise.race([
+                    Promise.resolve(this.commands[actualCommand](params)),
+                    new Promise((_, reject) =>
+                        setTimeout(() => reject(new Error('Command execution timeout')), 30000)
+                    )
+                ]);
             }
 
             this.activeRequests.delete(requestId);
@@ -212,37 +224,61 @@ window.AutomationHandler = class AutomationHandler {
             throw new Error('Invalid command format: empty command');
         }
 
-        const command = parts[0].trim();
-        if (!command) {
-            throw new Error('Invalid command format: empty command name');
-        }
+        // Convert command to lowercase for standardization
+        const commandRaw = parts[0].trim();
+        const command = commandRaw.toLowerCase();
 
-        // Handle different command parameter formats
+        // Map common variations to standard commands
+        const commandMap = {
+            'sendkeys': 'send_keys',
+            'click': 'click_element',
+            'clear': 'clear_element'
+        };
+
+        const standardCommand = commandMap[command] || command;
+
+        // Parse parameters based on command type
         let params = {};
         if (parts.length > 1) {
-            if (command === 'find_element_by_xpath' || command === 'find_elements_by_xpath') {
-                params = {
-                    xpath: parts[1]
-                };
-            } else if (command === 'navigate') {
-                params = { url: parts[1].trim() };
-            } else {
-                try {
-                    // Try parsing as JSON
-                    params = JSON.parse(parts[1]);
-                } catch {
-                    // For other commands, keep existing behavior
-                    const paramParts = parts.slice(1);
-                    if (paramParts.length === 1) {
-                        params = paramParts[0];
-                    } else {
-                        params = paramParts;
+            switch (standardCommand) {
+                case 'send_keys':
+                    if (parts.length < 3) {
+                        throw new Error('send_keys requires both selector and value parameters');
                     }
-                }
+                    params = {
+                        selector: parts[1],
+                        value: parts[2]
+                    };
+                    break;
+                case 'find_element_by_xpath':
+                case 'find_elements_by_xpath':
+                    params = {
+                        xpath: parts[1]
+                    };
+                    break;
+                case 'navigate':
+                    params = {
+                        url: parts[1]
+                    };
+                    break;
+                default:
+                    try {
+                        // Try parsing as JSON for other commands
+                        params = JSON.parse(parts[1]);
+                    } catch {
+                        // If not JSON, use as-is
+                        params = parts.length === 2 ? parts[1] : parts.slice(1);
+                    }
             }
         }
 
-        return { command, params };
+        window.automationLogger.info('Parsed command:', {
+            original: commandRaw,
+            standardized: standardCommand,
+            params
+        });
+
+        return { command: standardCommand, params };
     } catch (error) {
         throw new Error(`Command parsing error: ${error.message}`);
     }

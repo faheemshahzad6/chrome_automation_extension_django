@@ -288,9 +288,14 @@ window.basicCommands = {
         }
     },
 
-    send_keys: (params) => {
+    send_keys: async (params) => {
         try {
             window.automationLogger.info('Executing send_keys command', params);
+
+            if (!params || !params.selector || !params.value) {
+                throw new Error('Both selector and value are required for send_keys command');
+            }
+
             const element = document.evaluate(
                 params.selector,
                 document,
@@ -303,6 +308,21 @@ window.basicCommands = {
                 throw new Error(`Element not found: ${params.selector}`);
             }
 
+            // Check if element is interactable
+            const style = window.getComputedStyle(element);
+            if (style.display === 'none' || style.visibility === 'hidden') {
+                throw new Error('Element is not visible or interactable');
+            }
+
+            // Scroll element into view
+            element.scrollIntoView({ behavior: 'auto', block: 'center' });
+
+            // Small delay to allow for scrolling
+            await new Promise(resolve => setTimeout(resolve, 100));
+
+            // Clear existing value first
+            element.value = '';
+
             // Focus the element
             element.focus();
 
@@ -310,14 +330,26 @@ window.basicCommands = {
             element.value = params.value;
 
             // Dispatch events
-            element.dispatchEvent(new Event('input', { bubbles: true }));
-            element.dispatchEvent(new Event('change', { bubbles: true }));
+            const events = [
+                new Event('input', { bubbles: true }),
+                new Event('change', { bubbles: true })
+            ];
 
-            // Simulate keyboard events for better compatibility
-            params.value.split('').forEach(char => {
-                element.dispatchEvent(new KeyboardEvent('keydown', { key: char }));
-                element.dispatchEvent(new KeyboardEvent('keypress', { key: char }));
-                element.dispatchEvent(new KeyboardEvent('keyup', { key: char }));
+            // Dispatch keyboard events for each character
+            const text = params.value;
+            for (let i = 0; i < text.length; i++) {
+                const char = text[i];
+                events.push(new KeyboardEvent('keydown', { key: char, bubbles: true }));
+                events.push(new KeyboardEvent('keypress', { key: char, bubbles: true }));
+                events.push(new KeyboardEvent('keyup', { key: char, bubbles: true }));
+            }
+
+            // Dispatch all events
+            events.forEach(event => element.dispatchEvent(event));
+
+            window.automationLogger.success('send_keys completed successfully', {
+                selector: params.selector,
+                valueLength: params.value.length
             });
 
             return true;
