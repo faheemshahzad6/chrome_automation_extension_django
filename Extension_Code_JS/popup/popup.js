@@ -1,40 +1,29 @@
 document.addEventListener('DOMContentLoaded', () => {
-    const toggleButton = document.getElementById('toggleButton');
     const statusDiv = document.getElementById('status');
 
-    function showStatus(message, isError = false) {
-        statusDiv.textContent = message;
-        statusDiv.className = isError ? 'error' : 'success';
-        statusDiv.style.display = 'block';
-        setTimeout(() => {
-            statusDiv.style.display = 'none';
-        }, 3000);
-    }
+    function updateStatus(state) {
+        const statusMessages = {
+            connected: 'Connected to WebSocket',
+            connecting: 'Connecting to WebSocket...',
+            disconnected: 'Disconnected - Attempting to reconnect...',
+            error: 'Connection Error - Retrying...'
+        };
 
-    function updateButtonState(isLogging) {
-        toggleButton.textContent = isLogging ? 'Stop Logging' : 'Start Logging';
-        toggleButton.className = isLogging ? 'stopped' : '';
+        statusDiv.textContent = statusMessages[state.connectionState] || 'Unknown Status';
+        statusDiv.className = state.connectionState;
     }
 
     // Get initial state
     chrome.runtime.sendMessage({action: 'getState'}, (response) => {
         if (response) {
-            updateButtonState(response.isLogging);
+            updateStatus(response.wsState);
         }
     });
 
-    toggleButton.addEventListener('click', () => {
-        const willEnable = toggleButton.textContent === 'Start Logging';
-        chrome.runtime.sendMessage({
-            action: 'toggleLogging',
-            value: willEnable
-        }, (response) => {
-            if (response && response.isLogging !== undefined) {
-                updateButtonState(response.isLogging);
-                showStatus(`Logging ${response.isLogging ? 'started' : 'stopped'}`);
-            } else {
-                showStatus('Failed to toggle logging state', true);
-            }
-        });
+    // Listen for status updates
+    chrome.runtime.onMessage.addListener((message) => {
+        if (message.type === 'CONNECTION_STATE_CHANGED') {
+            updateStatus(message.state);
+        }
     });
 });

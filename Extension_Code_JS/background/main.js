@@ -3,26 +3,31 @@ import { TabManager } from './tab-manager.js';
 
 class BackgroundManager {
     constructor() {
-        this.isEnabled = false;
         this.wsManager = new WebSocketManager();
         this.tabManager = new TabManager();
+        this.statusCheckInterval = null;
         this.initialize();
-        this.navigationPromises = new Map();
     }
 
     async initialize() {
-        // Restore state from storage
-        const result = await chrome.storage.local.get(['isEnabled']);
-        this.isEnabled = result.isEnabled || false;
+        try {
+            // Setup WebSocket message handler
+            this.wsManager.setMessageHandler((data) => this.handleWebSocketMessage(data));
 
-        // Setup WebSocket message handler
-        this.wsManager.setMessageHandler((data) => this.handleWebSocketMessage(data));
+            // Setup connection state listener
+            this.wsManager.addConnectionStateListener((state) => this.handleConnectionStateChange(state));
 
-        if (this.isEnabled) {
+            // Start WebSocket connection immediately
             this.wsManager.connect();
-        }
 
-        this.setupMessageListeners();
+            // Start periodic status check
+            this.startStatusCheck();
+
+            this.setupMessageListeners();
+            console.log('[Background] Initialization complete');
+        } catch (error) {
+            console.error('[Background] Initialization error:', error);
+        }
     }
 
     setupMessageListeners() {
@@ -33,96 +38,150 @@ class BackgroundManager {
     }
 
     async handleMessage(message, sender, sendResponse) {
-    try {
-        console.log('[Background] Received message:', message);
+        try {
+            console.log('[Background] Received message:', message);
 
-        switch (message.action) {
-            case 'toggleLogging':
-                await this.handleToggleLogging(message, sendResponse);
-                break;
+            switch (message.action) {
+                case 'getState':
+                    sendResponse({
+                        wsState: this.wsManager.getState()
+                    });
+                    break;
 
-            case 'getState':
-                sendResponse({
-                    isLogging: this.isEnabled,
-                    wsState: this.wsManager.getState()
-                });
-                break;
+                case 'reconnectWebSocket':
+                    this.wsManager.close();
+                    this.wsManager.connect();
+                    sendResponse({ status: 'reconnecting' });
+                    break;
 
-            default:
-                if (!this.isEnabled) {
-                    sendResponse({ error: 'Extension is disabled' });
-                    return;
-                }
-
-                if (message.type === 'SCRIPT_RESULT' || message.type === 'SCRIPT_ERROR') {
-                    await this.wsManager.sendMessage(message);
-                    sendResponse({ received: true });
-                } else {
-                    sendResponse({ error: 'Unknown message type' });
-                }
+                default:
+                    if (message.type === 'SCRIPT_RESULT' || message.type === 'SCRIPT_ERROR') {
+                        const sent = await this.wsManager.sendMessage(message);
+                        sendResponse({ received: true, sent });
+                    } else {
+                        sendResponse({ error: 'Unknown message type' });
+                    }
+            }
+        } catch (error) {
+            console.error('[Background] Error handling message:', error);
+            sendResponse({ error: error.message });
         }
-    } catch (error) {
-        console.error('[Background] Error handling message:', error);
-        sendResponse({ error: error.message });
-    }
-}
-
-    async handleToggleLogging(message, sendResponse) {
-        this.isEnabled = message.value;
-        await chrome.storage.local.set({ isEnabled: this.isEnabled });
-
-        if (this.isEnabled) {
-            this.wsManager.connect();
-        } else {
-            this.wsManager.close();
-        }
-
-        sendResponse({ isLogging: this.isEnabled });
     }
 
-async handleWebSocketMessage(data) {
-    if (!this.isEnabled) return;
+    handleConnectionStateChange(state) {
+        console.log('[Background] WebSocket state changed:', state);
 
-    try {
-        if (data.type === 'error') {
-            console.error('[Background] WebSocket error:', data.error);
-            return;
-        }
+        // Update extension icon/badge based on connection state
+        const badgeColors = {
+            connected: '#4CAF50',
+            connecting: '#FFC107',
+            disconnected: '#F44336',
+            error: '#F44336'
+        };
 
-        if (data.type === 'automation_command') {
-            console.log('[Background] Executing automation command:', data.command);
+        const badgeText = {
+            connected: 'ON',
+            connecting: '...',
+            disconnected: 'OFF',
+            error: 'ERR'
+        };
 
-            // Special handling for navigation commands
-            if (data.command.script?.startsWith('navigate|')) {
-                const url = data.command.script.split('|')[1];
-                const tab = await chrome.tabs.update({ url: url });
+        chrome.action.setBadgeText({
+            text: badgeText[state.connectionState] || 'OFF'
+        });
 
-                // Send success response
-                this.wsManager.sendMessage({
-                    type: 'SCRIPT_RESULT',
-                    status: 'success',
-                    result: true,
-                    command_id: data.command.command_id
-                });
+        chrome.action.setBadgeBackgroundColor({
+            color: badgeColors[state.connectionState] || '#F44336'
+        });
 
+        // Notify popup if it's open
+        chrome.runtime.sendMessage({
+            type: 'CONNECTION_STATE_CHANGED',
+            state: state
+        }).catch(() => {}); // Ignore errors if popup is closed
+    }
+
+    async handleWebSocketMessage(data) {
+        try {
+            if (data.type === 'error') {
+                console.error('[Background] WebSocket error:', data.error);
                 return;
             }
 
-            // Handle other commands
-            await this.tabManager.executeCommand(data.command);
+            if (data.type === 'automation_command') {
+                console.log('[Background] Executing automation command:', data.command);
+
+                // Special handling for navigation commands
+                if (data.command.script?.startsWith('navigate|')) {
+                    const url = data.command.script.split('|')[1];
+                    const tab = await chrome.tabs.update({ url: url });
+
+                    // Send success response
+                    this.wsManager.sendMessage({
+                        type: 'SCRIPT_RESULT',
+                        status: 'success',
+                        result: true,
+                        command_id: data.command.command_id
+                    });
+
+                    return;
+                }
+
+                // Handle other commands
+                await this.tabManager.executeCommand(data.command);
+            }
+        } catch (error) {
+            console.error('[Background] Error handling WebSocket message:', error);
+            this.wsManager.sendMessage({
+                type: 'SCRIPT_ERROR',
+                status: 'error',
+                error: error.message,
+                stack: error.stack,
+                command_id: data.command?.command_id
+            });
         }
-    } catch (error) {
-        console.error('[Background] Error handling WebSocket message:', error);
-        this.wsManager.sendMessage({
-            type: 'SCRIPT_ERROR',
-            status: 'error',
-            error: error.message,
-            stack: error.stack,
-            command_id: data.command?.command_id
-        });
     }
-}
+
+    startStatusCheck() {
+        // Clear any existing interval
+        if (this.statusCheckInterval) {
+            clearInterval(this.statusCheckInterval);
+        }
+
+        // Check status every 10 seconds
+        this.statusCheckInterval = setInterval(() => {
+            const state = this.wsManager.getState();
+            console.log(`[WebSocket Status Check] Status: ${state.connectionState}`);
+
+            // Attempt to reconnect if disconnected
+            if (state.connectionState === 'disconnected') {
+                console.log('[WebSocket Status Check] Attempting to reconnect...');
+                this.wsManager.connect();
+            }
+        }, 10000);
+    }
+
+    cleanup() {
+        if (this.statusCheckInterval) {
+            clearInterval(this.statusCheckInterval);
+        }
+        this.wsManager.close();
+    }
 }
 
 // Initialize the background manager
+console.log('[Background] Initializing BackgroundManager...');
 const backgroundManager = new BackgroundManager();
+
+// Handle extension updates/reinstalls
+chrome.runtime.onInstalled.addListener((details) => {
+    console.log('[Background] Extension installed/updated:', details.reason);
+});
+
+// Cleanup on extension unload
+chrome.runtime.onSuspend.addListener(() => {
+    console.log('[Background] Extension suspending...');
+    if (backgroundManager) {
+        backgroundManager.cleanup();
+    }
+});

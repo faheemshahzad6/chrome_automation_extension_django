@@ -1,25 +1,45 @@
+// websocket.js
 export class WebSocketManager {
     constructor() {
         this.ws = null;
         this.isConnecting = false;
-        this.reconnectAttempts = 0;
-        this.maxReconnectAttempts = 5;
-        this.reconnectDelay = 5000;
+        this.reconnectTimer = null;
+        this.statusCheckTimer = null;
         this.messageHandler = null;
+        this.connectionStateListeners = new Set();
+        this.connectionState = 'disconnected';
     }
 
     setMessageHandler(handler) {
         this.messageHandler = handler;
     }
 
+    addConnectionStateListener(listener) {
+        this.connectionStateListeners.add(listener);
+    }
+
+    removeConnectionStateListener(listener) {
+        this.connectionStateListeners.delete(listener);
+    }
+
+    updateConnectionState(state) {
+        this.connectionState = state;
+        this.connectionStateListeners.forEach(listener => listener({
+            connectionState: state,
+            timestamp: new Date().toISOString()
+        }));
+
+        // Log status to console
+        console.log(`[WebSocket Status]: ${state} - ${new Date().toISOString()}`);
+    }
+
     connect() {
-        if (this.isConnecting || (this.ws && this.ws.readyState === WebSocket.OPEN)) {
-            console.log('WebSocket already connecting or connected');
+        if (this.isConnecting) {
             return;
         }
 
         this.isConnecting = true;
-        console.log('Attempting to connect to WebSocket...');
+        this.updateConnectionState('connecting');
 
         try {
             this.ws = new WebSocket('ws://localhost:1234/ws/app_chrome_automation_with_extension_django/');
@@ -34,7 +54,13 @@ export class WebSocketManager {
         this.ws.onopen = () => {
             console.log('Connected to Django server');
             this.isConnecting = false;
-            this.reconnectAttempts = 0;
+            this.updateConnectionState('connected');
+
+            // Clear any existing reconnect timer
+            if (this.reconnectTimer) {
+                clearTimeout(this.reconnectTimer);
+                this.reconnectTimer = null;
+            }
 
             this.sendMessage({
                 type: 'extension_connected',
@@ -43,7 +69,6 @@ export class WebSocketManager {
         };
 
         this.ws.onmessage = (event) => {
-            console.log('WebSocket received message:', event.data);
             try {
                 const data = JSON.parse(event.data);
                 if (this.messageHandler) {
@@ -54,39 +79,76 @@ export class WebSocketManager {
             }
         };
 
-        this.ws.onclose = (event) => {
-            console.log('WebSocket closed with code:', event.code);
+        this.ws.onclose = () => {
             this.handleConnectionError();
         };
 
         this.ws.onerror = (error) => {
             console.error('WebSocket error:', error);
-            this.isConnecting = false;
+            this.handleConnectionError();
         };
     }
 
     handleConnectionError() {
         this.isConnecting = false;
         this.ws = null;
+        this.updateConnectionState('disconnected');
 
-        if (this.reconnectAttempts < this.maxReconnectAttempts) {
-            console.log(`Attempting to reconnect (${this.reconnectAttempts + 1}/${this.maxReconnectAttempts})...`);
-            this.reconnectAttempts++;
-            setTimeout(() => this.connect(), this.reconnectDelay);
+        // Schedule reconnection
+        if (!this.reconnectTimer) {
+            this.reconnectTimer = setTimeout(() => {
+                this.reconnectTimer = null;
+                this.connect();
+            }, 10000); // Reconnect every 10 seconds
         }
+    }
+
+    startStatusCheck() {
+        // Clear any existing timer
+        if (this.statusCheckTimer) {
+            clearInterval(this.statusCheckTimer);
+        }
+
+        // Check status every 10 seconds
+        this.statusCheckTimer = setInterval(() => {
+            const isConnected = this.ws && this.ws.readyState === WebSocket.OPEN;
+            console.log(`[WebSocket Status Check] ${isConnected ? 'Connected' : 'Disconnected'}`);
+
+            if (!isConnected && !this.reconnectTimer && !this.isConnecting) {
+                this.connect();
+            }
+        }, 10000);
     }
 
     sendMessage(message) {
         if (this.ws && this.ws.readyState === WebSocket.OPEN) {
             try {
                 this.ws.send(JSON.stringify(message));
+                return true;
             } catch (error) {
                 console.error('Error sending WebSocket message:', error);
+                return false;
             }
         }
+        return false;
     }
 
-    close() {
+    getState() {
+        return {
+            connectionState: this.connectionState,
+            timestamp: new Date().toISOString()
+        };
+    }
+
+    reset() {
+        if (this.reconnectTimer) {
+            clearTimeout(this.reconnectTimer);
+            this.reconnectTimer = null;
+        }
+        if (this.statusCheckTimer) {
+            clearInterval(this.statusCheckTimer);
+            this.statusCheckTimer = null;
+        }
         if (this.ws) {
             this.ws.close();
             this.ws = null;

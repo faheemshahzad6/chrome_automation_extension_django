@@ -1,14 +1,41 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>JavaScript Executor</title>
-    <link rel="stylesheet" href="popup.css">
+    <style>
+        body {
+            width: 300px;
+            padding: 15px;
+            font-family: Arial, sans-serif;
+        }
+
+        #status {
+            padding: 10px;
+            border-radius: 4px;
+            text-align: center;
+            margin-bottom: 10px;
+        }
+
+        .connected {
+            background-color: #dff0d8;
+            color: #3c763d;
+            border: 1px solid #d6e9c6;
+        }
+
+        .disconnected {
+            background-color: #f2dede;
+            color: #a94442;
+            border: 1px solid #ebccd1;
+        }
+
+        .connecting {
+            background-color: #fcf8e3;
+            color: #8a6d3b;
+            border: 1px solid #faebcc;
+        }
+    </style>
 </head>
 <body>
-    <div class="container">
-        <button id="toggleButton">Start Logging</button>
-        <div id="status"></div>
-    </div>
+    <div id="status">Checking status...</div>
     <script src="popup.js"></script>
 </body>
 </html>
