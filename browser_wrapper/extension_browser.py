@@ -94,7 +94,7 @@ class WebElement:
         return self.browser._execute_command("submit_form", {"selector": self._xpath})
 
 
-class EnhancedBrowser:
+class ExtensionBrowser:
     """A Selenium-like browser automation client"""
 
     def __init__(self, base_url: str = "http://localhost:1234", timeout: int = 30):

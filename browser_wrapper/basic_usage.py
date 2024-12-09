@@ -1,7 +1,7 @@
-from browser import EnhancedBrowser
+from extension_browser import ExtensionBrowser
 import time
 
-browser = EnhancedBrowser()
+browser = ExtensionBrowser()
 try:
     # Navigate to the page
     # browser.get("https://propwire.com/search")
@@ -16,11 +16,11 @@ try:
 
         # Get all storage
         storage = browser.get_all_storage()
-        print("All Storage:", storage)
+        print(storage)
 
         # Get just cookies
-        cookies = browser.get_cookies()
-        print("Cookies:", cookies)
+        # cookies = browser.get_cookies()
+        # print("Cookies:", cookies)
 
         # search_box = browser.find_element_by_xpath('//input[@name="search"]')
         # a = search_box.text

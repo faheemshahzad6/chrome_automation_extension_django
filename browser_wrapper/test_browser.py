@@ -1,4 +1,4 @@
-from browser import EnhancedBrowser
+from extension_browser import ExtensionBrowser
 import time
 import logging
 from typing import Any, Dict, Optional
@@ -13,7 +13,7 @@ class BrowserAutomationTests(unittest.TestCase):
         cls.logger = logging.getLogger('BrowserAutomationTests')
 
         # Initialize browser
-        cls.browser = EnhancedBrowser(base_url="http://localhost:1234")
+        cls.browser = ExtensionBrowser(base_url="http://localhost:1234")
         cls.browser.implicitly_wait(10)  # Set implicit wait
 
     @classmethod
