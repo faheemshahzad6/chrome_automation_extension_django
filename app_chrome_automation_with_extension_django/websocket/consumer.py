@@ -7,6 +7,8 @@ from ..utils.logger import setup_logger
 from channels.layers import get_channel_layer
 from ..views import command_responses, store_command_response
 from typing import Optional, Dict, Any
+from pathlib import Path
+import aiofiles
 
 logger = setup_logger(__name__)
 
@@ -14,6 +16,8 @@ logger = setup_logger(__name__)
 class AutomationConsumer(AsyncWebsocketConsumer):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.log_file = None
+        self.logs_dir = None
         self.command_registry = CommandRegistry()
         self.command_task: Optional[asyncio.Task] = None
         self.storage_task: Optional[asyncio.Task] = None
@@ -42,6 +46,13 @@ class AutomationConsumer(AsyncWebsocketConsumer):
                 'message': 'Connected to Django WebSocket server',
                 'timestamp': datetime.now().isoformat()
             }))
+
+            # Create logs directory if it doesn't exist
+            self.logs_dir = Path("network_logs")
+            self.logs_dir.mkdir(exist_ok=True)
+
+            # Create a new log file for this session
+            self.log_file = self.logs_dir / f"network_log_{datetime.now().strftime('%Y%m%d_%H%M%S')}.jsonl"
 
         except Exception as e:
             logger.error(f"Error in connect: {str(e)}", exc_info=True)
@@ -89,6 +100,8 @@ class AutomationConsumer(AsyncWebsocketConsumer):
                 await self.handle_script_result(data)
             elif message_type == 'SCRIPT_ERROR':
                 await self.handle_script_error(data)
+            elif data.get('type') == 'network_request':
+                await self.handle_network_request(data)
             else:
                 logger.warning(f"Unknown message type: {message_type}")
 
@@ -96,6 +109,39 @@ class AutomationConsumer(AsyncWebsocketConsumer):
             logger.error(f"Invalid JSON format: {str(e)}")
         except Exception as e:
             logger.error(f"Error processing message: {str(e)}", exc_info=True)
+
+    async def handle_network_request(self, data):
+        """Handle network request data"""
+        try:
+            # Add timestamp if not present
+            if 'timestamp' not in data:
+                data['timestamp'] = datetime.now().isoformat()
+
+            # Format the log entry
+            log_entry = json.dumps({
+                'timestamp': data['timestamp'],
+                'event': data['event'],
+                'data': data['data']
+            })
+
+            # Append to log file
+            async with aiofiles.open(self.log_file, mode='a') as f:
+                await f.write(log_entry + '\n')
+
+            # Optional: Send confirmation back to client
+            await self.send(text_data=json.dumps({
+                'type': 'network_log_confirmation',
+                'requestId': data['data'].get('requestId'),
+                'status': 'logged'
+            }))
+
+        except Exception as e:
+            print(f"Error handling network request: {str(e)}")
+            # Notify client of error
+            await self.send(text_data=json.dumps({
+                'type': 'network_log_error',
+                'error': str(e)
+            }))
 
     async def send_command(self, event: Dict[str, Any]):
         """Handle command messages from group"""

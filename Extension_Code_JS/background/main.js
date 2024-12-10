@@ -1,10 +1,12 @@
 import { WebSocketManager } from './websocket.js';
 import { TabManager } from './tab-manager.js';
+import { NetworkMonitor } from './network-monitor.js';
 
 class BackgroundManager {
     constructor() {
         this.wsManager = new WebSocketManager();
         this.tabManager = new TabManager();
+        this.networkMonitor = new NetworkMonitor(this.wsManager);
         this.statusCheckInterval = null;
         this.initialize();
     }
@@ -19,6 +21,9 @@ class BackgroundManager {
 
             // Start WebSocket connection immediately
             this.wsManager.connect();
+
+            // Start network monitoring
+            this.networkMonitor.start();
 
             // Start periodic status check
             this.startStatusCheck();
@@ -44,7 +49,8 @@ class BackgroundManager {
             switch (message.action) {
                 case 'getState':
                     sendResponse({
-                        wsState: this.wsManager.getState()
+                        wsState: this.wsManager.getState(),
+                        networkMonitorState: this.networkMonitor.getState()
                     });
                     break;
 
@@ -52,6 +58,18 @@ class BackgroundManager {
                     this.wsManager.close();
                     this.wsManager.connect();
                     sendResponse({ status: 'reconnecting' });
+                    break;
+
+                case 'toggleNetworkMonitor':
+                    if (message.value) {
+                        this.networkMonitor.start();
+                    } else {
+                        this.networkMonitor.stop();
+                    }
+                    sendResponse({
+                        status: 'success',
+                        state: this.networkMonitor.getState()
+                    });
                     break;
 
                 default:
@@ -166,6 +184,7 @@ class BackgroundManager {
             clearInterval(this.statusCheckInterval);
         }
         this.wsManager.close();
+        this.networkMonitor.stop();
     }
 }
 

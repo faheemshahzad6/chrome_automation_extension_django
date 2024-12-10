@@ -26,7 +26,6 @@ class BackgroundManager {
             }
 
             this.setupMessageListeners();
-            console.log('[Background] Initialization complete');
         } catch (error) {
             console.error('[Background] Initialization error:', error);
         }

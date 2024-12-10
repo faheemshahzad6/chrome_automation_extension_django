@@ -15,7 +15,6 @@ export class TabManager {
     setupTabListeners() {
         chrome.tabs.onActivated.addListener((activeInfo) => {
             this.activeTabId = activeInfo.tabId;
-            console.log('Active tab changed to:', this.activeTabId);
         });
 
         chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
