@@ -221,8 +221,6 @@ class ExtensionBrowser:
                 try:
                     # Try to get the page title - if this succeeds, page has loaded
                     self._execute_command("getTitle")
-                    # Also verify we can access basic DOM elements
-                    self._execute_command("getMetadata")
                     return True
                 except Exception:
                     return False
@@ -305,8 +303,34 @@ class ExtensionBrowser:
         self._execute_command("forward")
 
     def refresh(self):
-        """Refresh the current page"""
-        self._execute_command("refresh")
+        """Navigate to a URL and wait for page load to complete"""
+        try:
+            # Send refresh command
+            self._execute_command("refresh")
+
+            # Wait for page load to complete
+            def page_loaded():
+                try:
+                    # Try to get the page title - if this succeeds, page has loaded
+                    self._execute_command("getTitle")
+                    return True
+                except Exception:
+                    return False
+
+            # Wait for page load with timeout
+            wait_until(
+                condition=page_loaded,
+                timeout=self.page_load_timeout,
+                poll_frequency=0.5
+            )
+
+            # Add a small buffer for any dynamic content
+            time.sleep(0.5)
+
+        except TimeoutError:
+            raise PageLoadTimeout(f"Timeout waiting for page to refresh")
+        except Exception as e:
+            raise BrowserException(f"Navigation failed: {str(e)}")
 
     def quit(self):
         """Close the browser session"""

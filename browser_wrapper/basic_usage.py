@@ -13,6 +13,7 @@ try:
     try:
         # s = browser.get_all_storage()
         # print(s)
+        browser.refresh()
 
         # Get all storage
         storage = browser.get_all_storage()
