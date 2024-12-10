@@ -1,5 +1,11 @@
-window.basicCommands = {
+window.basicCommands = (() => {
+    // Private variables for storing original functions
+    let _originalFetch = null;
+    let _originalOpen = null;
+    let _originalSend = null;
+    let _isCapturing = false;
 
+    return {
     // Navigation Commands
     navigate: async (params) => {
         try {
@@ -284,22 +290,34 @@ window.basicCommands = {
     },
 
     toggleNetworkMonitor: async (params) => {
-        try {
-            window.automationLogger.info('Executing toggleNetworkMonitor command', params);
+            try {
+                window.automationLogger.info('Executing toggleNetworkMonitor command', params);
 
-            // Send message to background script to toggle network monitoring
-            const response = await chrome.runtime.sendMessage({
-                action: 'toggleNetworkMonitor',
-                value: params.value
-            });
+                if (params.value) {
+                    if (!_isCapturing) {
+                        // Start network capture
+                        await window.basicCommands.startNetworkCapture();
+                    }
+                } else {
+                    if (_isCapturing) {
+                        // Stop network capture
+                        await window.basicCommands.stopNetworkCapture();
+                    }
+                }
 
-            window.automationLogger.success('Network monitor toggled', response);
-            return response;
-        } catch (error) {
-            window.automationLogger.error('Error in toggleNetworkMonitor', error);
-            throw error;
-        }
-    },
+                // Send message to background script
+                const response = await chrome.runtime.sendMessage({
+                    action: 'toggleNetworkMonitor',
+                    value: params.value
+                });
+
+                window.automationLogger.success('Network monitor toggled', response);
+                return response;
+            } catch (error) {
+                window.automationLogger.error('Error in toggleNetworkMonitor', error);
+                throw error;
+            }
+        },
 
     // Element Interaction Commands
     click_element: (params) => {
@@ -591,5 +609,182 @@ window.basicCommands = {
             window.automationLogger.error('Error in get_element_css_value', error);
             throw error;
         }
-    }
-};
+    },
+    startNetworkCapture: async () => {
+            try {
+                if (_isCapturing) {
+                    return true; // Already capturing
+                }
+
+                window.automationLogger.info('Starting network capture with response bodies');
+
+                // Store original fetch
+                _originalFetch = window.fetch;
+
+                // Override fetch
+                window.fetch = async (...args) => {
+                    const request = args[0];
+                    const requestTime = new Date().toISOString();
+                    let requestUrl = typeof request === 'string' ? request : request.url;
+
+                    try {
+                        // Make the actual request
+                        const response = await _originalFetch(...args);
+
+                        // Clone the response so we can read the body
+                        const responseClone = response.clone();
+
+                        // Try to get response body as text
+                        let responseBody;
+                        try {
+                            responseBody = await responseClone.text();
+                        } catch (e) {
+                            responseBody = 'Could not read response body';
+                        }
+
+                        // Create network log entry
+                        const logEntry = {
+                            type: 'network_request',
+                            event: 'complete_with_response',
+                            data: {
+                                requestId: Math.random().toString(36).substring(7),
+                                url: requestUrl,
+                                method: typeof request === 'string' ? 'GET' : request.method || 'GET',
+                                requestHeaders: typeof request === 'string' ? {} :
+                                    request.headers ? Object.fromEntries(request.headers) : {},
+                                requestTime: requestTime,
+                                responseTime: new Date().toISOString(),
+                                status: response.status,
+                                statusText: response.statusText,
+                                responseHeaders: Object.fromEntries(response.headers.entries()),
+                                responseBody: responseBody
+                            }
+                        };
+
+                        // Send to background script
+                        chrome.runtime.sendMessage(logEntry);
+
+                        return response;
+                    } catch (error) {
+                        // Log failed requests
+                        const logEntry = {
+                            type: 'network_request',
+                            event: 'error',
+                            data: {
+                                requestId: Math.random().toString(36).substring(7),
+                                url: requestUrl,
+                                method: typeof request === 'string' ? 'GET' : request.method || 'GET',
+                                requestHeaders: typeof request === 'string' ? {} :
+                                    request.headers ? Object.fromEntries(request.headers) : {},
+                                requestTime: requestTime,
+                                error: error.message
+                            }
+                        };
+
+                        chrome.runtime.sendMessage(logEntry);
+                        throw error;
+                    }
+                };
+
+                // Also intercept XHR requests
+                const XHR = XMLHttpRequest.prototype;
+                _originalOpen = XHR.open;
+                _originalSend = XHR.send;
+
+                XHR.open = function(method, url) {
+                    this._requestData = {
+                        method,
+                        url,
+                        requestTime: new Date().toISOString()
+                    };
+                    return _originalOpen.apply(this, arguments);
+                };
+
+                XHR.send = function(data) {
+                    const xhr = this;
+                    const requestId = Math.random().toString(36).substring(7);
+
+                    xhr.addEventListener('load', function() {
+                        const logEntry = {
+                            type: 'network_request',
+                            event: 'complete_with_response',
+                            data: {
+                                requestId,
+                                url: xhr._requestData.url,
+                                method: xhr._requestData.method,
+                                requestTime: xhr._requestData.requestTime,
+                                responseTime: new Date().toISOString(),
+                                status: xhr.status,
+                                statusText: xhr.statusText,
+                                responseBody: xhr.responseText,
+                                responseHeaders: xhr.getAllResponseHeaders().split('\r\n').reduce((obj, line) => {
+                                    const parts = line.split(': ');
+                                    if (parts[0]) {
+                                        obj[parts[0]] = parts[1];
+                                    }
+                                    return obj;
+                                }, {})
+                            }
+                        };
+
+                        chrome.runtime.sendMessage(logEntry);
+                    });
+
+                    xhr.addEventListener('error', function() {
+                        const logEntry = {
+                            type: 'network_request',
+                            event: 'error',
+                            data: {
+                                requestId,
+                                url: xhr._requestData.url,
+                                method: xhr._requestData.method,
+                                requestTime: xhr._requestData.requestTime,
+                                error: 'XHR request failed'
+                            }
+                        };
+
+                        chrome.runtime.sendMessage(logEntry);
+                    });
+
+                    return _originalSend.apply(this, arguments);
+                };
+
+                _isCapturing = true;
+                return true;
+            } catch (error) {
+                window.automationLogger.error('Error in startNetworkCapture', error);
+                throw error;
+            }
+        },
+
+        stopNetworkCapture: async () => {
+            try {
+                if (!_isCapturing) {
+                    return true; // Already stopped
+                }
+
+                window.automationLogger.info('Stopping network capture');
+
+                // Restore original fetch
+                if (_originalFetch) {
+                    window.fetch = _originalFetch;
+                    _originalFetch = null;
+                }
+
+                // Restore original XHR methods
+                if (_originalOpen && _originalSend) {
+                    XMLHttpRequest.prototype.open = _originalOpen;
+                    XMLHttpRequest.prototype.send = _originalSend;
+                    _originalOpen = null;
+                    _originalSend = null;
+                }
+
+                _isCapturing = false;
+                return true;
+            } catch (error) {
+                window.automationLogger.error('Error in stopNetworkCapture', error);
+                throw error;
+            }
+        }
+    };
+})();

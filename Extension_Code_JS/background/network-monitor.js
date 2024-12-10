@@ -143,21 +143,26 @@ export class NetworkMonitor {
     }
 
     handleResponse(details) {
-        const responseData = {
-            type: 'network_request',
-            event: 'response',
-            data: {
-                requestId: details.requestId,
-                url: details.url,
-                statusCode: details.statusCode,
-                statusLine: details.statusLine,
-                responseHeaders: details.responseHeaders,
-                timeStamp: details.timeStamp
-            }
-        };
+    const responseData = {
+        type: 'network_request',
+        event: 'response',
+        data: {
+            requestId: details.requestId,
+            url: details.url,
+            statusCode: details.statusCode,
+            statusLine: details.statusLine,
+            responseHeaders: details.responseHeaders.map(header => ({
+                name: header.name,
+                value: header.value
+            })),
+            timeStamp: details.timeStamp
+        }
+    };
 
-        this.wsManager.sendMessage(responseData);
-    }
+    // Send response metadata
+    this.wsManager.sendMessage(responseData);
+}
+
 
     handleCompleted(details) {
         const completedData = {
