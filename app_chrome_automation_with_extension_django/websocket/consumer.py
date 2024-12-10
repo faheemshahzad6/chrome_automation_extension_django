@@ -25,6 +25,18 @@ class AutomationConsumer(AsyncWebsocketConsumer):
         self.connected = False
         self.extension_connected = False
         self.pending_commands = {}
+        self.keepalive_task = None
+
+    async def send_keepalive(self):
+        while True:
+            try:
+                if self.connected:
+                    await self.send(text_data=json.dumps({
+                        "type": "keepalive",
+                    }))
+                await asyncio.sleep(15)  # Send keepalive every 15 seconds
+            except Exception:
+                break
 
     async def connect(self):
         """Handle WebSocket connection"""
@@ -33,6 +45,8 @@ class AutomationConsumer(AsyncWebsocketConsumer):
             await self.accept()
             self.connected = True
             logger.info("WebSocket connection accepted")
+
+            self.keepalive_task = asyncio.create_task(self.send_keepalive())
 
             # Add to automation group
             await self.channel_layer.group_add("automation", self.channel_name)
