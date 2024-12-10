@@ -283,6 +283,24 @@ window.basicCommands = {
         }
     },
 
+    toggleNetworkMonitor: async (params) => {
+        try {
+            window.automationLogger.info('Executing toggleNetworkMonitor command', params);
+
+            // Send message to background script to toggle network monitoring
+            const response = await chrome.runtime.sendMessage({
+                action: 'toggleNetworkMonitor',
+                value: params.value
+            });
+
+            window.automationLogger.success('Network monitor toggled', response);
+            return response;
+        } catch (error) {
+            window.automationLogger.error('Error in toggleNetworkMonitor', error);
+            throw error;
+        }
+    },
+
     // Element Interaction Commands
     click_element: (params) => {
         try {

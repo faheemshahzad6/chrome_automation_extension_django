@@ -1,71 +1,114 @@
 // background/network-monitor.js
 export class NetworkMonitor {
     constructor(wsManager) {
-        this.isEnabled = false;
+        this.isEnabled = false;  // Explicitly start as disabled
         this.wsManager = wsManager;
         this.filters = {
             urls: ["<all_urls>"]
         };
-        this.requestTypes = [
-            "main_frame", "sub_frame", "stylesheet", "script",
-            "image", "font", "object", "xmlhttprequest",
-            "ping", "csp_report", "media", "websocket", "other"
-        ];
+        this.listeners = {
+            onBeforeRequest: null,
+            onBeforeSendHeaders: null,
+            onResponseStarted: null,
+            onCompleted: null,
+            onErrorOccurred: null
+        };
     }
 
     start() {
-        if (this.isEnabled) return;
+        if (this.isEnabled) {
+            console.log('[NetworkMonitor] Already running');
+            return false;
+        }
 
-        this.isEnabled = true;
+        console.log('[NetworkMonitor] Starting network capture...');
 
-        // Monitor request started
+        // Store bound listeners for removal later
+        this.listeners.onBeforeRequest = this.handleRequest.bind(this);
+        this.listeners.onBeforeSendHeaders = this.handleRequestHeaders.bind(this);
+        this.listeners.onResponseStarted = this.handleResponse.bind(this);
+        this.listeners.onCompleted = this.handleCompleted.bind(this);
+        this.listeners.onErrorOccurred = this.handleError.bind(this);
+
+        // Add listeners
         chrome.webRequest.onBeforeRequest.addListener(
-            this.handleRequest.bind(this),
+            this.listeners.onBeforeRequest,
             this.filters,
             ["requestBody"]
         );
 
-        // Monitor request headers
         chrome.webRequest.onBeforeSendHeaders.addListener(
-            this.handleRequestHeaders.bind(this),
+            this.listeners.onBeforeSendHeaders,
             this.filters,
             ["requestHeaders"]
         );
 
-        // Monitor response started
         chrome.webRequest.onResponseStarted.addListener(
-            this.handleResponse.bind(this),
+            this.listeners.onResponseStarted,
             this.filters,
             ["responseHeaders"]
         );
 
-        // Monitor request completed
         chrome.webRequest.onCompleted.addListener(
-            this.handleCompleted.bind(this),
+            this.listeners.onCompleted,
             this.filters
         );
 
-        // Monitor request errors
         chrome.webRequest.onErrorOccurred.addListener(
-            this.handleError.bind(this),
+            this.listeners.onErrorOccurred,
             this.filters
         );
 
-        console.log('[NetworkMonitor] Started monitoring network requests');
+        this.isEnabled = true;
+        console.log('[NetworkMonitor] Network capture started');
+        return true;
     }
 
     stop() {
-        if (!this.isEnabled) return;
+        if (!this.isEnabled) {
+            console.log('[NetworkMonitor] Already stopped');
+            return false;
+        }
+
+        console.log('[NetworkMonitor] Stopping network capture...');
+
+        // Remove all listeners
+        if (this.listeners.onBeforeRequest) {
+            chrome.webRequest.onBeforeRequest.removeListener(this.listeners.onBeforeRequest);
+        }
+        if (this.listeners.onBeforeSendHeaders) {
+            chrome.webRequest.onBeforeSendHeaders.removeListener(this.listeners.onBeforeSendHeaders);
+        }
+        if (this.listeners.onResponseStarted) {
+            chrome.webRequest.onResponseStarted.removeListener(this.listeners.onResponseStarted);
+        }
+        if (this.listeners.onCompleted) {
+            chrome.webRequest.onCompleted.removeListener(this.listeners.onCompleted);
+        }
+        if (this.listeners.onErrorOccurred) {
+            chrome.webRequest.onErrorOccurred.removeListener(this.listeners.onErrorOccurred);
+        }
+
+        // Reset listeners
+        Object.keys(this.listeners).forEach(key => {
+            this.listeners[key] = null;
+        });
 
         this.isEnabled = false;
+        console.log('[NetworkMonitor] Network capture stopped');
+        return true;
+    }
 
-        chrome.webRequest.onBeforeRequest.removeListener(this.handleRequest);
-        chrome.webRequest.onBeforeSendHeaders.removeListener(this.handleRequestHeaders);
-        chrome.webRequest.onResponseStarted.removeListener(this.handleResponse);
-        chrome.webRequest.onCompleted.removeListener(this.handleCompleted);
-        chrome.webRequest.onErrorOccurred.removeListener(this.handleError);
+    handleToggle(value) {
+        console.log(`[NetworkMonitor] Toggle requested: ${value}`);
 
-        console.log('[NetworkMonitor] Stopped monitoring network requests');
+        const result = value ? this.start() : this.stop();
+
+        return {
+            success: result,
+            isEnabled: this.isEnabled,
+            timestamp: new Date().toISOString()
+        };
     }
 
     handleRequest(details) {

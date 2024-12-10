@@ -32,7 +32,7 @@ from .dom import (
     # Element property commands
     GetElementAttributeCommand,
     GetElementTextCommand,
-    GetElementCssValueCommand
+    GetElementCssValueCommand, ToggleNetworkMonitorCommand
 )
 
 
@@ -85,6 +85,7 @@ class CommandRegistry:
             GetAllStorageCommand(),
             GetCookiesCommand(),
             ClearStorageCommand(),
+            ToggleNetworkMonitorCommand(),
         ]
 
         for command in commands:

@@ -22,8 +22,7 @@ class BackgroundManager {
             // Start WebSocket connection immediately
             this.wsManager.connect();
 
-            // Start network monitoring
-            this.networkMonitor.start();
+            // Note: Removed automatic network monitoring start
 
             // Start periodic status check
             this.startStatusCheck();
@@ -43,48 +42,41 @@ class BackgroundManager {
     }
 
     async handleMessage(message, sender, sendResponse) {
-        try {
-            console.log('[Background] Received message:', message);
+    try {
+        console.log('[Background] Received message:', message);
 
-            switch (message.action) {
-                case 'getState':
-                    sendResponse({
-                        wsState: this.wsManager.getState(),
-                        networkMonitorState: this.networkMonitor.getState()
-                    });
-                    break;
+        switch (message.action) {
+            case 'getState':
+                sendResponse({
+                    wsState: this.wsManager.getState(),
+                    networkMonitorState: this.networkMonitor.getState()
+                });
+                break;
 
-                case 'reconnectWebSocket':
-                    this.wsManager.close();
-                    this.wsManager.connect();
-                    sendResponse({ status: 'reconnecting' });
-                    break;
+            case 'reconnectWebSocket':
+                this.wsManager.close();
+                this.wsManager.connect();
+                sendResponse({ status: 'reconnecting' });
+                break;
 
-                case 'toggleNetworkMonitor':
-                    if (message.value) {
-                        this.networkMonitor.start();
-                    } else {
-                        this.networkMonitor.stop();
-                    }
-                    sendResponse({
-                        status: 'success',
-                        state: this.networkMonitor.getState()
-                    });
-                    break;
+            case 'toggleNetworkMonitor':
+                const result = this.networkMonitor.handleToggle(message.value);
+                sendResponse(result);
+                break;
 
-                default:
-                    if (message.type === 'SCRIPT_RESULT' || message.type === 'SCRIPT_ERROR') {
-                        const sent = await this.wsManager.sendMessage(message);
-                        sendResponse({ received: true, sent });
-                    } else {
-                        sendResponse({ error: 'Unknown message type' });
-                    }
-            }
-        } catch (error) {
-            console.error('[Background] Error handling message:', error);
-            sendResponse({ error: error.message });
+            default:
+                if (message.type === 'SCRIPT_RESULT' || message.type === 'SCRIPT_ERROR') {
+                    const sent = await this.wsManager.sendMessage(message);
+                    sendResponse({ received: true, sent });
+                } else {
+                    sendResponse({ error: 'Unknown message type' });
+                }
         }
+    } catch (error) {
+        console.error('[Background] Error handling message:', error);
+        sendResponse({ error: error.message });
     }
+}
 
     handleConnectionStateChange(state) {
         console.log('[Background] WebSocket state changed:', state);

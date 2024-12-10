@@ -190,6 +190,42 @@ class ExtensionBrowser:
             time.sleep(0.5)
         return False
 
+    def start_network_capture(self) -> bool:
+        """Start capturing network requests"""
+        try:
+            self.logger.info("Attempting to start network capture")
+            result = self._execute_command('toggleNetworkMonitor', {'value': True})
+            if isinstance(result, dict):
+                success = result.get('success', False)
+            else:
+                success = bool(result)
+            if success:
+                self.logger.info("Network capture started successfully")
+            else:
+                self.logger.warning("Failed to start network capture")
+            return success
+        except Exception as e:
+            self.logger.error(f"Error starting network capture: {str(e)}")
+            return False
+
+    def stop_network_capture(self) -> bool:
+        """Stop capturing network requests"""
+        try:
+            self.logger.info("Attempting to stop network capture")
+            result = self._execute_command('toggleNetworkMonitor', {'value': False})
+            if isinstance(result, dict):
+                success = result.get('success', False)
+            else:
+                success = bool(result)
+            if success:
+                self.logger.info("Network capture stopped successfully")
+            else:
+                self.logger.warning("Failed to stop network capture")
+            return success
+        except Exception as e:
+            self.logger.error(f"Error stopping network capture: {str(e)}")
+            return False
+
     def _execute_command(self, command: str, params: Optional[Dict] = None) -> Any:
         """Execute a command with improved error handling and retry logic"""
         if not command:

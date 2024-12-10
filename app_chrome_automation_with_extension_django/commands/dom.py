@@ -306,3 +306,18 @@ class GetCookiesCommand(DOMCommand):
 
     def build_script(self, **kwargs) -> str:
         return self.script_name
+
+
+class ToggleNetworkMonitorCommand(DOMCommand):
+    def __init__(self):
+        super().__init__(
+            name="toggleNetworkMonitor",
+            description="Toggle network request monitoring",
+            script_name="toggleNetworkMonitor"
+        )
+
+    def validate_params(self, **kwargs) -> bool:
+        return "value" in kwargs and isinstance(kwargs["value"], bool)
+
+    def build_script(self, **kwargs) -> str:
+        return f"{self.script_name}|{str(kwargs['value']).lower()}"

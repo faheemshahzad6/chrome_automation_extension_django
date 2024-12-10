@@ -260,7 +260,11 @@ window.AutomationHandler = class AutomationHandler {
             'get_cookies': 'getCookies',
             'getcookies': 'getCookies',
             'get_all_storage': 'getAllStorage',
-            'getallstorage': 'getAllStorage'
+            'getallstorage': 'getAllStorage',
+
+            'togglenetworkmonitor': 'toggleNetworkMonitor',
+            'toggle_network_monitor': 'toggleNetworkMonitor',
+            'toggleNetworkMonitor': 'toggleNetworkMonitor'
         };
 
         // Convert to lowercase for matching
@@ -278,6 +282,11 @@ window.AutomationHandler = class AutomationHandler {
                 case 'click_element':
                     params = {
                         selector: parts[1]
+                    };
+                    break;
+                case 'toggleNetworkMonitor':
+                    params = {
+                        value: parts[1].toLowerCase() === 'true'
                     };
                     break;
                 case 'send_keys':
