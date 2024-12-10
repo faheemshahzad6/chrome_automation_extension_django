@@ -54,6 +54,26 @@ class WebElement:
             "value": value
         })
 
+    def press_enter(self):
+        """Press the Enter key"""
+        return self.send_keys('\n')
+
+    def press_backspace(self):
+        """Press the Backspace key"""
+        return self.send_keys('\b')
+
+    def press_tab(self):
+        """Press the Tab key"""
+        return self.send_keys('\t')
+
+    def press_escape(self):
+        """Press the Escape key"""
+        return self.send_keys('\x1b')
+
+    def press_space(self):
+        """Press the Space key"""
+        return self.send_keys(' ')
+
     def clear(self):
         """Clear the element's content"""
         return self.browser._execute_command("clear_element", {"selector": self._xpath})
