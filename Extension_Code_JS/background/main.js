@@ -2,6 +2,26 @@ import { WebSocketManager } from './websocket.js';
 import { TabManager } from './tab-manager.js';
 import { NetworkMonitor } from './network-monitor.js';
 
+async function handleGetAllCookies({ url, domain }) {
+    try {
+        const cookies = await Promise.all([
+            chrome.cookies.getAll({ url }),
+            chrome.cookies.getAll({ domain: domain.startsWith('.') ? domain : `.${domain}` }),
+            chrome.cookies.getAll({ domain })
+        ]);
+
+        const uniqueCookies = new Map();
+        cookies.flat().forEach(cookie => {
+            uniqueCookies.set(cookie.name, cookie);
+        });
+
+        return { cookies: Array.from(uniqueCookies.values()) };
+    } catch (error) {
+        console.error('Error getting cookies:', error);
+        return { error: error.message };
+    }
+}
+
 class BackgroundManager {
     constructor() {
         this.wsManager = new WebSocketManager();
@@ -36,6 +56,11 @@ class BackgroundManager {
 
     setupMessageListeners() {
         chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+        if (message.type === "GET_ALL_COOKIES") {
+            handleGetAllCookies(message.data)
+                .then(sendResponse);
+            return true; // Will respond asynchronously
+        }
             this.handleMessage(message, sender, sendResponse);
             return true; // Required for async response
         });

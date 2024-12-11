@@ -8,13 +8,11 @@ window.storageCommands = (() => {
             const dbPromises = databases.map(db => new Promise((resolve) => {
                 try {
                     const request = indexedDB.open(db.name);
-
                     request.onsuccess = (event) => {
                         const db = event.target.result;
                         const stores = Array.from(db.objectStoreNames);
                         resolve({ [db.name]: { stores } });
                     };
-
                     request.onerror = (event) => {
                         window.automationLogger.error(`Error opening IndexedDB ${db.name}`, event.target.error);
                         resolve({ [db.name]: { error: event.target.error.message } });
@@ -27,7 +25,6 @@ window.storageCommands = (() => {
 
             const dbResults = await Promise.all(dbPromises);
             dbResults.forEach(result => Object.assign(results, result));
-
             return results;
         } catch (error) {
             window.automationLogger.error('Error getting IndexedDB data', error);
@@ -35,54 +32,70 @@ window.storageCommands = (() => {
         }
     };
 
-    const getCookies = () => {
-        try {
-            return document.cookie.split(';')
-                .map(cookie => {
-                    const [name, value] = cookie.split('=').map(c => c.trim());
-                    return { name, value };
-                })
-                .filter(cookie => cookie.name);
-        } catch (error) {
-            window.automationLogger.error('Error getting cookies', error);
-            throw error;
-        }
-    };
-
-    const getLocalStorage = () => {
-        try {
-            const storage = {};
-            for (let i = 0; i < window.localStorage.length; i++) {
-                const key = window.localStorage.key(i);
-                try {
-                    storage[key] = window.localStorage.getItem(key);
-                } catch (error) {
-                    storage[key] = { error: error.message };
+    const getCookiesComplete = () => {
+        return new Promise((resolve) => {
+            // Get all cookies including HttpOnly ones using chrome.cookies API
+            chrome.runtime.sendMessage({
+                type: "GET_ALL_COOKIES",
+                data: {
+                    url: window.location.href,
+                    domain: window.location.hostname
                 }
-            }
-            return storage;
-        } catch (error) {
-            window.automationLogger.error('Error getting localStorage', error);
-            throw error;
-        }
-    };
-
-    const getSessionStorage = () => {
-        try {
-            const storage = {};
-            for (let i = 0; i < window.sessionStorage.length; i++) {
-                const key = window.sessionStorage.key(i);
-                try {
-                    storage[key] = window.sessionStorage.getItem(key);
-                } catch (error) {
-                    storage[key] = { error: error.message };
+            }, (response) => {
+                if (response?.error) {
+                    window.automationLogger.error('Error getting cookies:', response.error);
+                    resolve([]);
+                    return;
                 }
-            }
-            return storage;
-        } catch (error) {
-            window.automationLogger.error('Error getting sessionStorage', error);
-            throw error;
-        }
+
+                const cookies = response?.cookies || [];
+
+                // Also get document.cookie for any non-HttpOnly cookies that might be missed
+                const documentCookies = document.cookie.split(';')
+                    .map(cookie => {
+                        const [name, ...valueParts] = cookie.trim().split('=');
+                        return {
+                            name: name.trim(),
+                            value: valueParts.join('='), // Handle values containing =
+                            domain: window.location.hostname,
+                            path: '/'
+                        };
+                    })
+                    .filter(cookie => cookie.name);
+
+                // Merge both sets of cookies, preferring chrome.cookies API results
+                const cookieMap = new Map();
+
+                // First add chrome.cookies API results
+                cookies.forEach(cookie => {
+                    cookieMap.set(cookie.name, {
+                        name: cookie.name,
+                        value: cookie.value,
+                        domain: cookie.domain,
+                        path: cookie.path,
+                        expires: cookie.expirationDate ? new Date(cookie.expirationDate * 1000).toISOString() : undefined,
+                        size: cookie.value.length,
+                        httpOnly: cookie.httpOnly,
+                        secure: cookie.secure,
+                        sameSite: cookie.sameSite,
+                        session: !cookie.expirationDate
+                    });
+                });
+
+                // Then add any missing cookies from document.cookie
+                documentCookies.forEach(cookie => {
+                    if (!cookieMap.has(cookie.name)) {
+                        cookieMap.set(cookie.name, cookie);
+                    }
+                });
+
+                // Convert Map to array
+                const allCookies = Array.from(cookieMap.values());
+
+                window.automationLogger.info(`Retrieved ${allCookies.length} cookies`);
+                resolve(allCookies);
+            });
+        });
     };
 
     // Public API
@@ -93,9 +106,23 @@ window.storageCommands = (() => {
 
                 const [indexedDBData, cookies, localStorage, sessionStorage] = await Promise.all([
                     getAllIndexedDBData(),
-                    getCookies(),
-                    getLocalStorage(),
-                    getSessionStorage()
+                    getCookiesComplete(),
+                    (() => {
+                        const storage = {};
+                        for (let i = 0; i < window.localStorage.length; i++) {
+                            const key = window.localStorage.key(i);
+                            storage[key] = window.localStorage.getItem(key);
+                        }
+                        return storage;
+                    })(),
+                    (() => {
+                        const storage = {};
+                        for (let i = 0; i < window.sessionStorage.length; i++) {
+                            const key = window.sessionStorage.key(i);
+                            storage[key] = window.sessionStorage.getItem(key);
+                        }
+                        return storage;
+                    })()
                 ]);
 
                 return {
@@ -112,31 +139,12 @@ window.storageCommands = (() => {
             }
         },
 
-        clearStorage: async (storageType = 'all') => {
+        getCookies: async () => {
             try {
-                window.automationLogger.info('Executing clearStorage command', { storageType });
-
-                const clearPromises = [];
-
-                if (storageType === 'all' || storageType === 'localStorage') {
-                    clearPromises.push(window.localStorage.clear());
-                }
-
-                if (storageType === 'all' || storageType === 'sessionStorage') {
-                    clearPromises.push(window.sessionStorage.clear());
-                }
-
-                if (storageType === 'all' || storageType === 'cookies') {
-                    document.cookie.split(';').forEach(cookie => {
-                        const name = cookie.split('=')[0].trim();
-                        document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/`;
-                    });
-                }
-
-                await Promise.all(clearPromises);
-                return { success: true, clearedType: storageType };
+                window.automationLogger.info('Executing getCookies command');
+                return await getCookiesComplete();
             } catch (error) {
-                window.automationLogger.error('Error in clearStorage', error);
+                window.automationLogger.error('Error in getCookies', error);
                 throw error;
             }
         }

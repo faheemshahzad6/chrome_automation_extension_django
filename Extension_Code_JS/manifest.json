@@ -4,6 +4,7 @@
   "version": "1.0",
   "description": "Chrome extension for automation with Django backend",
   "permissions": [
+    "cookies",
     "activeTab",
     "storage",
     "scripting",
@@ -13,7 +14,9 @@
   "host_permissions": [
     "http://localhost:1234/*",
     "ws://localhost:1234/*",
-    "<all_urls>"
+    "<all_urls>",
+    "http://*/*",
+    "https://*/*"
   ],
   "background": {
     "service_worker": "background/main.js",
