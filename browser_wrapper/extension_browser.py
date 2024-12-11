@@ -390,6 +390,7 @@ class ExtensionBrowser:
 
     def quit(self):
         """Close the browser session"""
+        print("Browser cleanup called only, no action done.")
         pass
         # self.session.close()
 
