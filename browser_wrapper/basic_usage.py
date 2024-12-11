@@ -6,6 +6,7 @@ try:
     # Start capture
     print("Starting network capture...")
     capture_started = browser.start_network_capture()
+    # print(browser.get_all_storage())
     if capture_started:
         print("Network capture started successfully")
     else:
@@ -21,10 +22,12 @@ try:
         pass
         # Stop capture in inner finally block
         capture_stopped = browser.stop_network_capture()
-        if capture_stopped:
-            print("Network capture stopped successfully")
-        else:
-            print("Failed to stop network capture")
+    print(browser.get_network_logs())
+    print(browser.clear_network_logs())
+        # if capture_stopped:
+        #     print("Network capture stopped successfully")
+        # else:
+        #     print("Failed to stop network capture")
 
 except Exception as e:
     print(f"Error: {str(e)}")

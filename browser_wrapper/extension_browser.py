@@ -409,3 +409,17 @@ class ExtensionBrowser:
     def get_metadata(self) -> Dict[str, str]:
         """Get page metadata"""
         return self._execute_command("get_metadata")
+
+    def get_network_logs(self):
+        """Get network logs from the API"""
+        response = requests.get(f"{self.base_url}/api/network/logs")
+        return response.json()['logs']
+
+    def clear_network_logs(self, keep_latest=False):
+        """Clear network logs"""
+        response = requests.post(
+            f"{self.base_url}/api/network/logs/clear",
+            json={'keep_latest': keep_latest}
+        )
+        return response.json()
+

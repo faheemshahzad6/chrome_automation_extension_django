@@ -1,9 +1,11 @@
+import os
+
 from django.shortcuts import render
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 from .services.command_service import CommandService
-from .utils.logger import logger
+from .utils.logger import logger, clean_old_logs, get_latest_log_file, read_log_file
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
 import json
@@ -19,6 +21,54 @@ command_service = CommandService()
 # Global storage for command responses with thread safety
 command_responses: Dict[str, Any] = {}
 response_lock = threading.Lock()
+
+
+@csrf_exempt
+@require_http_methods(["GET"])
+def get_network_logs_api(request):
+    """API endpoint to get network logs"""
+    try:
+        log_file = get_latest_log_file()
+        if not log_file:
+            return JsonResponse({
+                'status': 'success',
+                'message': 'No logs found',
+                'logs': []
+            })
+
+        logs = read_log_file(log_file)
+        return JsonResponse({
+            'status': 'success',
+            'logs': logs,
+            'log_file': os.path.basename(log_file),
+            'timestamp': datetime.now().isoformat()
+        })
+    except Exception as e:
+        logger.error(f"Error getting network logs: {str(e)}", exc_info=True)
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        }, status=500)
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def clear_network_logs_api(request):
+    """API endpoint to clear network logs"""
+    try:
+        keep_latest = json.loads(request.body).get('keep_latest', True)
+        deleted_count = clean_old_logs(keep_latest)
+        return JsonResponse({
+            'status': 'success',
+            'deleted_count': deleted_count,
+            'timestamp': datetime.now().isoformat()
+        })
+    except Exception as e:
+        logger.error(f"Error clearing network logs: {str(e)}", exc_info=True)
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        }, status=500)
 
 
 def store_command_response(command_id: str, response: Any) -> None:

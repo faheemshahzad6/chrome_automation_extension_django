@@ -115,7 +115,6 @@ class AutomationConsumer(AsyncWebsocketConsumer):
             elif message_type == 'SCRIPT_ERROR':
                 await self.handle_script_error(data)
             elif data.get('type') == 'network_request':
-                print(data)
                 await self.handle_network_request(data)
             else:
                 logger.warning(f"Unknown message type: {message_type}")

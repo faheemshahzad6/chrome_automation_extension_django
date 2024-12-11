@@ -15,4 +15,7 @@ urlpatterns = [
 
     # API v1 Storage Endpoints
     path('api/storage/data', views.get_storage_data_api, name='storage_data_api'),  # Removed trailing slash
+
+    path('api/network/logs', views.get_network_logs_api, name='network_logs_api'),
+    path('api/network/logs/clear', views.clear_network_logs_api, name='clear_network_logs_api'),
 ]
